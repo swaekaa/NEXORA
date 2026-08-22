@@ -1,11 +1,18 @@
 """
 NEXORA Backend — Application Configuration
-Uses Pydantic Settings for environment variable loading.
-All secrets must be provided via .env file — never hardcoded.
+
+All settings are loaded from environment variables (or a .env file).
+No secrets are hardcoded here. See .env.example for required keys.
+
+Usage:
+    from app.config import settings
+    print(settings.APP_NAME)
 """
 from functools import lru_cache
+from typing import Literal
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import list
 
 
 class Settings(BaseSettings):
@@ -13,47 +20,76 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        # Extra fields in .env are ignored, not an error
+        extra="ignore",
     )
 
-    # ── Application ───────────────────────────────────────────────
+    # ── Application ───────────────────────────────────────────────────────────
     APP_NAME: str = "NEXORA"
-    ENVIRONMENT: str = "development"  # development | production
+    APP_VERSION: str = "0.1.0"
+    ENVIRONMENT: Literal["development", "production", "test"] = "development"
     DEBUG: bool = False
+    LOG_LEVEL: str = "INFO"
 
-    # ── Database ──────────────────────────────────────────────────
-    DATABASE_URL: str  # e.g. postgresql+asyncpg://user:pass@localhost:5432/nexora
+    # ── Database ──────────────────────────────────────────────────────────────
+    # Full async DSN: postgresql+asyncpg://user:password@host:port/dbname
+    DATABASE_URL: str = "postgresql+asyncpg://nexora:nexora_password@localhost:5432/nexora"
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
+    DB_ECHO: bool = False  # Set True for SQL query logging (noisy)
 
-    # ── Razorpay ──────────────────────────────────────────────────
-    # IMPORTANT: KEY_ID and WEBHOOK_SECRET are different credentials
-    RAZORPAY_KEY_ID: str          # rzp_test_xxxx (safe to send to frontend)
-    RAZORPAY_KEY_SECRET: str      # NEVER send to frontend
-    RAZORPAY_WEBHOOK_SECRET: str  # Configure in Razorpay Dashboard → Settings → Webhooks
-    RAZORPAY_TEST_MODE: bool = True
+    # ── Razorpay ──────────────────────────────────────────────────────────────
+    # These are optional at Phase 1 (Razorpay integration is Phase 9).
+    # Required fields are enforced when those modules are initialised.
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""
 
-    # ── LLM ───────────────────────────────────────────────────────
-    LLM_PROVIDER: str = "openai"  # openai | anthropic
-    LLM_MODEL: str = "gpt-4o"
-    LLM_API_KEY: str
+    # ── LLM (Phase 5+) ────────────────────────────────────────────────────────
+    LLM_API_KEY: str = ""
 
-    # ── Agent Defaults ────────────────────────────────────────────
+    # ── CORS ──────────────────────────────────────────────────────────────────
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ]
+
+    # ── Agent Behaviour (Phase 5+) ────────────────────────────────────────────
     MAX_NEGOTIATION_ROUNDS: int = 10
     NEGOTIATION_TIMEOUT_MINUTES: int = 30
     MAX_TOOL_RETRIES: int = 3
-    DEFAULT_AUTONOMOUS_LIMIT: float = 1_000_000.00  # ₹10,00,000
 
-    # ── CORS ──────────────────────────────────────────────────────
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    @field_validator("LOG_LEVEL")
+    @classmethod
+    def validate_log_level(cls, v: str) -> str:
+        allowed = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        upper = v.upper()
+        if upper not in allowed:
+            raise ValueError(f"LOG_LEVEL must be one of {allowed}, got {v!r}")
+        return upper
 
-    # ── Demo Mode ─────────────────────────────────────────────────
-    # Set DEMO_MODE=cached to use pre-recorded agent responses (demo fallback)
-    DEMO_MODE: str = "live"  # live | cached
+    @property
+    def is_development(self) -> bool:
+        return self.ENVIRONMENT == "development"
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT == "production"
+
+    @property
+    def is_test(self) -> bool:
+        return self.ENVIRONMENT == "test"
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
+    """
+    Return a cached Settings instance.
+    Use get_settings() for dependency injection in FastAPI routes.
+    The module-level `settings` singleton is available for non-DI usage.
+    """
     return Settings()
 
 
-settings = get_settings()
+# Module-level singleton — use this for imports outside of DI context
+settings: Settings = get_settings()

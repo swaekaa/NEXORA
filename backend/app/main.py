@@ -1,40 +1,219 @@
 """
-NEXORA Backend — FastAPI Application Entry Point
+NEXORA Backend — FastAPI Application
+
+Application factory pattern: create_app() builds and configures the FastAPI
+instance. The module-level `app` variable is what uvicorn runs.
+
+Startup lifecycle:
+  1. configure_logging()
+  2. Database engine is already created at import (connection.py)
+  3. Routers registered
+
+Shutdown lifecycle:
+  1. engine.dispose() — releases all DB pool connections
 """
-from fastapi import FastAPI
+from __future__ import annotations
+
+import logging
+import time
+import uuid
+from contextlib import asynccontextmanager
+from typing import Any
+
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings
+from app.exceptions import NexoraError
+from app.logging_config import configure_logging
 
-app = FastAPI(
-    title="NEXORA API",
-    description="The agreement layer for AI commerce",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+logger = logging.getLogger(__name__)
 
 
-@app.get("/health", tags=["health"])
-async def health_check():
-    """Health check endpoint."""
-    return {
-        "status": "ok",
-        "version": "1.0.0",
-        "service": "nexora-backend",
-    }
+# ── Lifespan ───────────────────────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):  # type: ignore[type-arg]
+    """
+    Manage application startup and shutdown.
+
+    Startup:
+        - Configure logging
+        - Log configuration summary (without secrets)
+
+    Shutdown:
+        - Dispose database connection pool
+    """
+    # ── Startup ──────────────────────────────────────────────────────────────
+    configure_logging(settings.LOG_LEVEL)
+
+    logger.info(
+        "NEXORA starting | service=nexora-api version=%s env=%s",
+        settings.APP_VERSION,
+        settings.ENVIRONMENT,
+    )
+    logger.info(
+        "Database pool | size=%s max_overflow=%s",
+        settings.DB_POOL_SIZE,
+        settings.DB_MAX_OVERFLOW,
+    )
+
+    yield
+
+    # ── Shutdown ─────────────────────────────────────────────────────────────
+    from app.database.connection import engine
+
+    await engine.dispose()
+    logger.info("NEXORA shutdown complete — DB pool released")
 
 
-# TODO (Phase 1+): Register API routers here
-# from app.api import catalog, buyer, negotiations, agreements, payments, webhooks, audit, approvals, merchant
-# app.include_router(catalog.router, prefix="/api/v1", tags=["catalog"])
-# app.include_router(buyer.router, prefix="/api/v1", tags=["buyer"])
-# ... etc
+# ── Application Factory ────────────────────────────────────────────────────────
+
+def create_app() -> FastAPI:
+    """
+    Build and configure the FastAPI application.
+    Returns a fully configured app instance.
+    """
+    app = FastAPI(
+        title="NEXORA API",
+        description=(
+            "The agreement layer for AI commerce. "
+            "Enables autonomous AI buyer and merchant agents to negotiate, "
+            "agree, and pay — within strict deterministic economic policies."
+        ),
+        version=settings.APP_VERSION,
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
+        lifespan=lifespan,
+    )
+
+    _register_middleware(app)
+    _register_exception_handlers(app)
+    _register_routers(app)
+
+    return app
+
+
+# ── Middleware ─────────────────────────────────────────────────────────────────
+
+def _register_middleware(app: FastAPI) -> None:
+    """Register all middleware in the correct order (outermost first)."""
+
+    # ── Request ID Middleware ─────────────────────────────────────────────────
+    @app.middleware("http")
+    async def request_id_middleware(request: Request, call_next: Any) -> Any:
+        """
+        Attach a unique request_id to every request.
+        Logged with every log statement in the request context.
+        """
+        request_id = str(uuid.uuid4())
+        request.state.request_id = request_id
+        request.state.start_time = time.monotonic()
+
+        response = await call_next(request)
+
+        duration_ms = (time.monotonic() - request.state.start_time) * 1000
+        logger.info(
+            "request | id=%s method=%s path=%s status=%s duration_ms=%.1f",
+            request_id,
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+        )
+
+        response.headers["X-Request-Id"] = request_id
+        return response
+
+    # ── CORS ──────────────────────────────────────────────────────────────────
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+
+# ── Exception Handlers ─────────────────────────────────────────────────────────
+
+def _register_exception_handlers(app: FastAPI) -> None:
+    """Register global exception handlers that convert exceptions to JSON responses."""
+
+    @app.exception_handler(NexoraError)
+    async def nexora_error_handler(request: Request, exc: NexoraError) -> JSONResponse:
+        """
+        Convert any NexoraError subclass to a structured JSON error response.
+        The error code and HTTP status are derived from the exception class.
+        """
+        logger.warning(
+            "domain error | code=%s message=%s path=%s",
+            exc.code,
+            exc.message,
+            request.url.path,
+        )
+        return JSONResponse(
+            status_code=exc.http_status,
+            content=exc.to_dict(),
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        """
+        Catch-all for unexpected exceptions.
+        Logs the full traceback but returns a generic message to the client
+        (never expose internal details in production).
+        """
+        logger.exception(
+            "unhandled exception | path=%s | %s: %s",
+            request.url.path,
+            type(exc).__name__,
+            exc,
+        )
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "error": "INTERNAL_ERROR",
+                "message": "An unexpected error occurred. Please try again.",
+            },
+        )
+
+
+# ── Routers ────────────────────────────────────────────────────────────────────
+
+def _register_routers(app: FastAPI) -> None:
+    """
+    Register all API routers.
+
+    Phase 1: /health only.
+    Later phases add their routers here as they are implemented.
+    """
+    from app.api.health import router as health_router
+
+    # Health endpoints (no /api/v1 prefix — these are infra-level)
+    app.include_router(health_router)
+
+    # ── Future routers (uncomment as phases are completed) ────────────────────
+    # Phase 3:  from app.api.catalog import router as catalog_router
+    #           app.include_router(catalog_router, prefix="/api/v1")
+    # Phase 5:  from app.api.buyer import router as buyer_router
+    #           app.include_router(buyer_router, prefix="/api/v1")
+    # Phase 7:  from app.api.negotiations import router as negotiations_router
+    #           app.include_router(negotiations_router, prefix="/api/v1")
+    # Phase 8:  from app.api.agreements import router as agreements_router
+    #           app.include_router(agreements_router, prefix="/api/v1")
+    # Phase 9:  from app.api.payments import router as payments_router
+    #           app.include_router(payments_router, prefix="/api/v1")
+    # Phase 10: from app.api.webhooks import router as webhooks_router
+    #           app.include_router(webhooks_router, prefix="/api/v1")
+    # Phase 11: from app.api.audit import router as audit_router
+    #           app.include_router(audit_router, prefix="/api/v1")
+    # Phase 12: from app.api.approvals import router as approvals_router
+    #           app.include_router(approvals_router, prefix="/api/v1")
+
+
+# ── Module-level app instance ──────────────────────────────────────────────────
+
+app: FastAPI = create_app()

@@ -1,17 +1,12 @@
 """
-NEXORA Failure Scenario Integration Tests
+NEXORA Failure Scenario Integration Tests — Phase 14
 
 Tests all 7 explicitly documented failure cases.
-Requires database (test DB) but NOT live Razorpay (uses mock/fixture data).
+These require a database (test DB) but NOT live Razorpay.
 
+STATUS: Placeholder — implemented in Phase 14.
 See docs/FAILURE_HANDLING.md for each failure scenario specification.
 """
-# TODO (Phase 14): Implement all 7 failure scenario tests
-# 
-# F1: Payment amount mismatch → BLOCKED
-# F2: Price below merchant minimum → POLICY_BLOCKED
-# F3: Exceeds autonomous limit → REQUIRES_HUMAN_APPROVAL
-# F4: Duplicate webhook → silently skipped
-# F5: Payment failed → PAYMENT_FAILED state
-# F6: Invalid webhook signature → 400
-# F7: Invalid tool arguments → schema validation error, retry
+
+# Phase 14 tests will be implemented here.
+# Empty at Phase 1 — pytest collects 0 tests, which is expected.

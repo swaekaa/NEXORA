@@ -105,22 +105,13 @@ scripts/init_db.py
 - None yet
 
 ### Implementation Tasks
-1. Create `backend/app/config.py` with Pydantic `Settings` class:
-   - `DATABASE_URL`
-   - `RAZORPAY_KEY_ID`
-   - `RAZORPAY_KEY_SECRET`
-   - `RAZORPAY_WEBHOOK_SECRET`
-   - `LLM_PROVIDER` (openai | anthropic)
-   - `LLM_MODEL`
-   - `LLM_API_KEY`
-   - `ENVIRONMENT` (development | production)
-   - `AUTONOMOUS_LIMIT_DEFAULT` (default: ₹10,00,000)
-2. Create FastAPI `main.py` with health check endpoint
-3. Create Docker Compose with postgres, backend, frontend services
-4. Create `.env.example` with all required keys (no values)
-5. Initialize Vite React TypeScript frontend
-6. Configure CORS in FastAPI
-7. Verify `GET /health` returns `{"status": "ok"}`
+- [x] 1. Create `backend/app/config.py` with Pydantic `Settings` class
+- [x] 2. Create FastAPI `main.py` with health check endpoint
+- [x] 3. Create Docker Compose with postgres, backend, frontend services
+- [x] 4. Create `.env.example` with all required keys (no values)
+- [x] 5. Initialize Vite React TypeScript frontend (scaffolded)
+- [x] 6. Configure CORS in FastAPI
+- [x] 7. Verify `GET /health` returns `{"status": "ok"}`
 
 ### Tests
 - `test_health_endpoint` → GET /health returns 200

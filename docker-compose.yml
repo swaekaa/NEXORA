@@ -1,8 +1,11 @@
 version: '3.9'
 
 services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
   db:
     image: postgres:15-alpine
+    container_name: nexora-db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: nexora
       POSTGRES_PASSWORD: nexora_password
@@ -12,46 +15,52 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nexora"]
+      test: ["CMD-SHELL", "pg_isready -U nexora -d nexora"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
 
+  # ── FastAPI Backend ─────────────────────────────────────────────────────────
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: nexora-backend
+    restart: unless-stopped
     environment:
+      # Application
+      APP_NAME: NEXORA
+      APP_VERSION: "0.1.0"
+      ENVIRONMENT: development
+      DEBUG: "false"
+      LOG_LEVEL: INFO
+      # Database — connects to the db service above
       DATABASE_URL: postgresql+asyncpg://nexora:nexora_password@db:5432/nexora
-      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
-      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
-      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
-      LLM_MODEL: ${LLM_MODEL:-gpt-4o}
-      LLM_API_KEY: ${LLM_API_KEY}
-      DEMO_MODE: ${DEMO_MODE:-live}
+      DB_POOL_SIZE: "5"
+      DB_MAX_OVERFLOW: "10"
+      DB_ECHO: "false"
+      # Razorpay — provided by host .env (Phase 9)
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      # LLM — provided by host .env (Phase 5)
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      # CORS — allow the frontend dev server
+      CORS_ORIGINS: '["http://localhost:3000","http://localhost:5173"]'
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
     volumes:
+      # Mount source for hot-reload during development
       - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    environment:
-      VITE_API_BASE_URL: http://localhost:8000
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+    # Run migrations then start the dev server with hot-reload
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app"
 
 volumes:
   nexora_postgres_data:
+    name: nexora_postgres_data
