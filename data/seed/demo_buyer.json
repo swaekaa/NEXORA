@@ -1,0 +1,14 @@
+{
+  "buyer": {
+    "name": "Horizon Corp Procurement Agent",
+    "organization": "Horizon Corp",
+    "email": "buyer@demo.nexora.ai"
+  },
+  "policy": {
+    "max_budget": "1100000.00",
+    "max_delivery_days": 7,
+    "min_warranty_months": 12,
+    "preferred_payment": "upfront"
+  },
+  "demo_goal": "Buy 100 Dell monitors for our new office, budget ₹11 lakh, delivery within 7 days, at least 12 months warranty, pay upfront for the best discount."
+}

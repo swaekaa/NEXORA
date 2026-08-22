@@ -1,0 +1,31 @@
+"""
+NEXORA Demo Seed Data — Merchant
+"""
+{
+  "merchant": {
+    "name": "TechSupply Pro",
+    "email": "merchant@demo.nexora.ai"
+  },
+  "product": {
+    "name": "Dell 24\" FHD Monitor",
+    "sku": "DELL-24-FHD-001",
+    "description": "Dell 24-inch Full HD IPS Display (P2422H), 1920x1080, HDMI, DisplayPort, USB-C Hub",
+    "base_price": "12000.00",
+    "currency": "INR",
+    "available_stock": 500
+  },
+  "policy": {
+    "base_price": "12000.00",
+    "minimum_price": "10500.00",
+    "bulk_discounts": [
+      {"min_quantity": 50, "discount_pct": "5.00"},
+      {"min_quantity": 100, "discount_pct": "8.00"}
+    ],
+    "upfront_discount_pct": "2.00",
+    "autonomous_limit": "2000000.00",
+    "max_delivery_days": 7,
+    "min_warranty_months": 12,
+    "allowed_payment_terms": ["upfront", "net30"],
+    "max_negotiation_rounds": 10
+  }
+}
