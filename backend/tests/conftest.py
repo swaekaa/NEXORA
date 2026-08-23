@@ -22,11 +22,15 @@ from httpx import ASGITransport, AsyncClient
 
 
 # ── Set test environment BEFORE importing app modules ─────────────────────────
+# Force ENVIRONMENT=test FIRST, before loading .env, so it cannot be overridden
+os.environ["ENVIRONMENT"] = "test"
+
 from dotenv import load_dotenv
 # Load real .env from root so we get the Neon DB URL (since we don't have local Postgres)
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "../.env"))
 
 # This ensures settings are loaded with test values, not real credentials.
+# Note: setdefault does NOT overwrite keys already set above (ENVIRONMENT)
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("RAZORPAY_KEY_ID", "rzp_test_PLACEHOLDER")
 os.environ.setdefault("RAZORPAY_KEY_SECRET", "test_secret_PLACEHOLDER")

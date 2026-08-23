@@ -1,18 +1,31 @@
 """
 NEXORA — Pydantic Schemas
-All LLM tool inputs/outputs validated against these schemas.
 All monetary fields use Decimal — never float.
+
+Phase 3 (complete):
+  - ProductCreate, ProductUpdate, ProductResponse, ProductListResponse
+  - PolicyCreate, PolicyUpdate, PolicyResponse, PolicyListResponse
 """
-# TODO (Phase 2+): Implement schemas
-# Schemas to implement:
-#   - MerchantSchema, MerchantPolicySchema, BulkDiscountTier
-#   - BuyerSchema, BuyerPolicySchema
-#   - ProductSchema
-#   - NegotiationSchema, NegotiationMessageSchema
-#   - CommercialAgreement, AgreementStatus
-#   - PolicyResult, PolicyCheck, PolicyDecision
-#   - Buyer tools: DiscoverProductsTool, SubmitBuyRequestTool, SubmitCounterOfferTool, AcceptOfferTool, RejectOfferTool
-#   - Merchant tools: EvaluateBuyRequestTool, GenerateOfferTool, RequestHumanApprovalTool, RejectBuyRequestTool
-#   - PaymentSchema, PaymentAuthorizationResult
-#   - AuditEvent, AuditAction, AgentType
-#   - ApprovalRequestSchema
+from app.schemas.product import (
+    ProductCreate,
+    ProductListResponse,
+    ProductResponse,
+    ProductUpdate,
+)
+from app.schemas.policy import (
+    PolicyCreate,
+    PolicyListResponse,
+    PolicyResponse,
+    PolicyUpdate,
+)
+
+__all__ = [
+    "ProductCreate",
+    "ProductUpdate",
+    "ProductResponse",
+    "ProductListResponse",
+    "PolicyCreate",
+    "PolicyUpdate",
+    "PolicyResponse",
+    "PolicyListResponse",
+]

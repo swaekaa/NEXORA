@@ -1,12 +1,11 @@
 """
 NEXORA — Business Logic Services
 Service layer between API routes and domain logic.
+
+Phase 3 (complete):
+  - product_service: create, list, get, update, deactivate
+  - policy_service:  create, list, get, update, delete
 """
-# Services to implement:
-#   - CatalogService (Phase 3)
-#   - NegotiationService (Phase 7)
-#   - AgreementService (Phase 8)
-#   - PaymentService (Phase 9)
-#   - WebhookService (Phase 10)
-#   - AuditService (Phase 11)
-#   - ApprovalService (Phase 12)
+from app.services import product_service, policy_service
+
+__all__ = ["product_service", "policy_service"]

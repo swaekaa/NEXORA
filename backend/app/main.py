@@ -188,6 +188,7 @@ def _register_routers(app: FastAPI) -> None:
     Register all API routers.
 
     Phase 1: /health only.
+    Phase 3: Merchant Catalog (products + policies).
     Later phases add their routers here as they are implemented.
     """
     from app.api.health import router as health_router
@@ -195,9 +196,11 @@ def _register_routers(app: FastAPI) -> None:
     # Health endpoints (no /api/v1 prefix — these are infra-level)
     app.include_router(health_router)
 
+    # ── Phase 3: Merchant Catalog ─────────────────────────────────────────────
+    from app.api.catalog import router as catalog_router
+    app.include_router(catalog_router, prefix="/api/v1")
+
     # ── Future routers (uncomment as phases are completed) ────────────────────
-    # Phase 3:  from app.api.catalog import router as catalog_router
-    #           app.include_router(catalog_router, prefix="/api/v1")
     # Phase 5:  from app.api.buyer import router as buyer_router
     #           app.include_router(buyer_router, prefix="/api/v1")
     # Phase 7:  from app.api.negotiations import router as negotiations_router
