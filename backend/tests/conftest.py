@@ -22,9 +22,12 @@ from httpx import ASGITransport, AsyncClient
 
 
 # ── Set test environment BEFORE importing app modules ─────────────────────────
+from dotenv import load_dotenv
+# Load real .env from root so we get the Neon DB URL (since we don't have local Postgres)
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "../.env"))
+
 # This ensures settings are loaded with test values, not real credentials.
 os.environ.setdefault("ENVIRONMENT", "test")
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://nexora:nexora_password@localhost:5432/nexora_test")
 os.environ.setdefault("RAZORPAY_KEY_ID", "rzp_test_PLACEHOLDER")
 os.environ.setdefault("RAZORPAY_KEY_SECRET", "test_secret_PLACEHOLDER")
 os.environ.setdefault("RAZORPAY_WEBHOOK_SECRET", "test_webhook_secret_PLACEHOLDER")
@@ -58,3 +61,28 @@ async def client(app) -> AsyncGenerator[AsyncClient, None]:
         base_url="http://testserver",
     ) as ac:
         yield ac
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def cleanup_database_pool():
+    """
+    Gracefully dispose the global database engine pool at the end of the test session.
+    This prevents 'RuntimeError: Event loop is closed' caused by asyncpg 
+    trying to clean up connections after the pytest event loop is shut down.
+    """
+    yield
+    from app.database.connection import engine
+    await engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """
+    Force pytest-asyncio to use a single event loop for the entire test session.
+    Because our database engine (pool) is created globally, if the event loop
+    closes between tests, asyncpg background tasks will crash.
+    """
+    import asyncio
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()

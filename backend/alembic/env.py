@@ -30,19 +30,15 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # ── Import Base and all models so autogenerate sees them ─────────────────────
-# As models are added in later phases, import them here so Alembic detects changes.
-from app.database.base import Base  # noqa: E402
+import os
+import sys
 
-# Future phase models — uncomment as each phase implements models:
-# from app.models.merchant import Merchant        # Phase 2
-# from app.models.buyer import Buyer              # Phase 2
-# from app.models.product import Product          # Phase 2
-# from app.models.negotiation import Negotiation  # Phase 2
-# from app.models.agreement import Agreement      # Phase 2
-# from app.models.payment import Payment          # Phase 2
-# from app.models.audit import AuditEvent         # Phase 2
-# from app.models.approval import ApprovalRequest # Phase 2
-# from app.models.webhook_event import WebhookEvent # Phase 2
+# Ensure the 'backend' directory is in the Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Importing app.models registers all 8 domain models with Base.metadata
+from app.database.base import Base  # noqa: E402
+import app.models  # noqa: F401, E402 — side-effect import: registers all models
 
 target_metadata = Base.metadata
 

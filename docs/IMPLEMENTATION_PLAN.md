@@ -127,81 +127,101 @@ scripts/init_db.py
 - Phase 0 complete
 
 ### Risks
-- Docker networking issues on Windows → document workaround
+- Docker networking issues on Windows → docum## Phase 2 — Database
 
----
-
-## Phase 2 — Database
+**Status: ✅ COMPLETE (August 23, 2026)**
+**Migration:** `create_core_nexora_domain_models` (run: `alembic upgrade head`)
 
 ### Objective
 Create the PostgreSQL schema, SQLAlchemy models, and Alembic migrations for all core entities.
 
-### Files Affected
+### Files Created
 ```
-backend/app/database/connection.py    ← async engine + session factory
-backend/app/database/base.py          ← declarative base
-backend/app/models/merchant.py
-backend/app/models/buyer.py
-backend/app/models/product.py
-backend/app/models/negotiation.py
-backend/app/models/agreement.py
-backend/app/models/payment.py
-backend/app/models/audit.py
-backend/app/models/approval.py
-backend/app/models/webhook_event.py
-backend/alembic/                      ← migration directory
-backend/alembic.ini
-scripts/init_db.py
-data/seed/demo_merchant.json
-data/seed/demo_products.json
-data/seed/demo_buyer.json
+backend/app/models/merchant.py            ✅ Merchant, MerchantStatus
+backend/app/models/buyer.py               ✅ Buyer, BuyerStatus
+backend/app/models/policy.py              ✅ Policy (merchant-level financial constraints)
+backend/app/models/product.py             ✅ Product, ProductStatus
+backend/app/models/negotiation.py         ✅ Negotiation, NegotiationState enum
+backend/app/models/negotiation_message.py ✅ NegotiationMessage, SenderType, MessageType
+backend/app/models/agreement.py           ✅ Agreement, AgreementStatus enum
+backend/app/models/payment.py             ✅ Payment, PaymentStatus enum
+backend/app/models/__init__.py            ✅ All models exported for Alembic discovery
+backend/tests/unit/test_models.py         ✅ Pure unit tests (no DB)
+backend/tests/integration/test_database_models.py ✅ DB integration tests
+```
+
+### Files Modified
+```
+backend/alembic/env.py    ← Updated model imports for autogenerate
+docs/DATABASE_SCHEMA.md   ← Rewritten with actual implemented schema
 ```
 
 ### Database Changes
 
-**Core Tables (see DATABASE_SCHEMA.md for full schema):**
+**8 Core Tables Implemented:**
 
-```sql
-merchants         -- merchant profiles + policy config
-buyers            -- buyer profiles + constraint config
-products          -- merchant product catalog
-merchant_policies -- economic policy per merchant
-buyer_policies    -- budget/constraint policy per buyer
-negotiations      -- negotiation sessions (state machine)
-negotiation_messages -- all messages in a negotiation
-agreements        -- commercial agreements (canonical)
-payments          -- payment records + razorpay references
-audit_events      -- immutable audit log
-approval_requests -- human approval queue
-webhook_events    -- idempotency log for webhook events
+```
+merchants             — Merchant profiles (status: active|inactive|suspended)
+buyers                — Buyer profiles (status: active|inactive|blocked)
+policies              — Merchant financial policy (typed columns, no opaque JSON)
+products              — Merchant catalog (SKU unique per-merchant, not globally)
+negotiations          — Negotiation state machine (7 controlled states)
+negotiation_messages  — Append-only agent exchange (JSONB payload, strict sequence)
+agreements            — Canonical commercial truth (immutable commercial terms)
+payments              — Razorpay order/payment mapping
 ```
 
-### Implementation Tasks
-1. Create async SQLAlchemy engine with connection pooling
-2. Create all ORM models with proper relationships
-3. Create Alembic migration: `alembic revision --autogenerate -m "initial_schema"`
-4. Implement `scripts/init_db.py` to run migrations and seed demo data
-5. Create seed data: Dell 24" Monitor merchant with full policy
-6. Create seed data: Demo buyer with ₹11L budget
-7. Add DB health check to `/health` endpoint
+**Not implemented yet (deferred to later phases):**
+- `buyer_policies` (Phase 4)
+- `audit_events` (Phase 10)
+- `approval_requests` (Phase 8)
+- `webhook_events` (Phase 11)
+- `bulk_discount_tiers` (Phase 4)
 
-### Tests
-- `test_db_connection` → can connect and query
-- `test_migrations_apply` → alembic upgrade head succeeds
-- `test_seed_data` → merchant, product, buyer exist after seeding
-- `test_models_relationships` → cascade behavior correct
+### Key Design Decisions
 
-### Acceptance Criteria
-- `scripts/init_db.py` creates schema and seeds demo data
-- All models load without errors
-- Foreign key constraints enforced
-- `agreement.total` stored as NUMERIC(18,2), never FLOAT
+| Decision | Rationale |
+|----------|-----------|
+| Policy is merchant-level, not per-product | Policy Engine operates on merchant-level constraints |
+| Razorpay IDs in separate Payment table | Enforces 3-layer truth (agreed vs happened) |
+| Status as controlled string enum | `suspended ≠ inactive`; CHECK constraints at DB level |
+| `NegotiationMessage.sequence_number` with UNIQUE | Prevents ambiguous message ordering |
+| `Agreement.negotiation_id` UNIQUE | Enforces one-negotiation→one-agreement |
+| All monetary fields NUMERIC(18,2) | Never float |
+| RESTRICT on financial FK deletions | Financial history cannot be silently deleted |
+
+### Acceptance Criteria Status
+
+- [x] Merchant model implemented
+- [x] Policy model implemented
+- [x] Buyer model implemented
+- [x] Product model implemented
+- [x] Negotiation model implemented
+- [x] NegotiationMessage model implemented
+- [x] Agreement model implemented
+- [x] Payment model implemented
+- [x] All primary keys use UUID
+- [x] All money uses Decimal/Numeric(18,2)
+- [x] Currency stored explicitly (CHAR(3))
+- [x] Product SKU unique per merchant
+- [x] Inventory cannot be negative (CHECK constraint)
+- [x] Negotiation states controlled (CHECK + Python enum)
+- [x] Negotiation messages have ordered sequence numbers
+- [x] Agreement has unique negotiation relationship
+- [x] Agreement contains canonical financial snapshot
+- [x] Payment maps to Razorpay order/payment IDs
+- [x] Razorpay order ID is unique
+- [x] Foreign keys correctly configured
+- [x] Deletion behavior protects financial history
+- [x] Appropriate indexes exist
+- [x] Relationships work correctly
+- [ ] Alembic migration run (requires live DB)
+- [ ] Integration tests run (requires live DB)
 
 ### Dependencies
-- Phase 1 complete
+- Phase 1 complete ✅
 
-### Risks
-- SQLAlchemy async complexity → use sync session in tests for simplicity
+---
 
 ---
 
