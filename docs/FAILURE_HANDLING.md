@@ -109,9 +109,14 @@ Agreement total > `merchant_policy.autonomous_limit`
 ### Detection Point
 `PolicyEngine._rule_autonomous_limit()`:
 ```python
-if total > autonomous_limit:
-    return PolicyDecision.REQUIRES_HUMAN_APPROVAL
+passed = (request.total_amount <= context.maximum_autonomous_transaction)
+return PolicyCheck(
+    rule_name="MERCHANT_AUTONOMOUS_LIMIT",
+    passed=passed,
+    ...
+)
 ```
+Then `_compile_result()` returns `PolicyDecision.HUMAN_APPROVAL_REQUIRED`.
 
 **Flow:**
 ```

@@ -79,10 +79,10 @@ NEXORA answers all of these.
 |-------|-------------|--------|
 | Phase 0 | Architecture & Planning | ✅ Complete |
 | Phase 1 | Repository + Infrastructure | ✅ Complete |
-| Phase 2 | Database Schema + Models | 🔜 Next |
-| Phase 3 | Merchant Catalog API | ⬜ Pending |
-| Phase 4 | Policy Engine | ⬜ Pending |
-| Phase 5 | Buyer Agent | ⬜ Pending |
+| Phase 2 | Database Schema + Models | ✅ Complete |
+| Phase 3 | Merchant Catalog API | ✅ Complete |
+| Phase 4 | Policy Engine | ✅ Complete |
+| Phase 5 | Buyer Agent | 🔜 Next |
 | Phase 6 | Merchant Agent | ⬜ Pending |
 | Phase 7 | Negotiation Engine | ⬜ Pending |
 | Phase 8 | Agreement Engine | ⬜ Pending |

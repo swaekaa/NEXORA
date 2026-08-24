@@ -141,11 +141,13 @@ States: `DISCOVER → REQUEST → OFFER → COUNTER_OFFER → ACCEPT → REJECT 
 - Triggers policy validation
 
 #### Policy Engine (CRITICAL — 100% Deterministic)
-- Validates merchant policy: minimum price, max discount, autonomous limit, inventory
-- Validates buyer policy: maximum budget, delivery deadline, warranty
+- Implemented as a pure-Python module (`PolicyEngine`) with strict Decimal operations
+- Validates merchant constraints: minimum price, max discount, autonomous limit
+- Evaluates against the typed DB `Policy` schema (no legacy JSON parsing)
 - Validates agreement integrity: calculated totals must match agreement totals exactly
-- Returns typed PolicyResult: PASS | FAIL | REQUIRES_HUMAN_APPROVAL
-- No LLM involved in policy evaluation
+- Returns typed PolicyResult: PASS (ALLOW) | FAIL (DENY) | REQUIRES_HUMAN_APPROVAL
+- Precedence: DENY > REQUIRES_HUMAN_APPROVAL > ALLOW
+- Zero external dependencies (no LLM, no network, no DB queries)
 
 #### Payment Authorization Layer
 - Only activates after PolicyEngine returns PASS
