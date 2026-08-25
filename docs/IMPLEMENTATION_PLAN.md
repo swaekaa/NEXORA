@@ -351,27 +351,27 @@ The policy engine was built as a pure-Python module (`PolicyEngine.evaluate()`) 
 
 ## Phase 5 — Buyer Agent
 
+**Status: ✅ COMPLETE (August 24, 2026)**
+
 ### Objective
 Implement the AI Buyer Agent — an LLM-powered agent with structured tool calling that operates within buyer constraints and cannot directly execute financial actions.
 
 ### Files Affected
 ```
-backend/app/agents/buyer/agent.py        ← BuyerAgent class
-backend/app/agents/buyer/tools.py        ← tool definitions (Pydantic)
-backend/app/agents/buyer/prompts.py      ← system prompt
-backend/app/agents/buyer/constraints.py  ← buyer constraint handling
-backend/app/schemas/buyer.py             ← buyer schemas
-backend/app/services/buyer_service.py    ← buyer session management
-backend/app/api/buyer.py                 ← buyer API routes
+backend/app/agents/buyer/__init__.py
+backend/app/agents/buyer/config.py
+backend/app/agents/buyer/graph.py
+backend/app/agents/buyer/nodes.py
+backend/app/agents/buyer/policy_node.py
+backend/app/agents/buyer/prompts.py
+backend/app/agents/buyer/schemas.py
+backend/app/agents/buyer/tools.py
+backend/app/services/negotiation_service.py
 backend/tests/unit/test_buyer_agent.py
-backend/tests/integration/test_buyer_flow.py
 ```
 
 ### APIs Required
-- `POST /api/v1/buyer/session` — create buyer session
-- `POST /api/v1/buyer/session/{session_id}/message` — send message to buyer agent
-- `GET /api/v1/buyer/session/{session_id}` — get session state
-- `GET /api/v1/buyer/session/{session_id}/messages` — get conversation history
+- None in this phase (endpoint deferred to integration).
 
 ### Buyer Agent Tools (Pydantic schemas required for all)
 

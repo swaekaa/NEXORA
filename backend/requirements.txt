@@ -22,3 +22,9 @@ tzdata; sys_platform == 'win32'  # required for Alembic timezone parsing on Wind
 
 # NOTE: LLM SDKs (openai, anthropic) and razorpay are NOT included until Phase 5/9
 # They will be added when the relevant phases are implemented.
+
+# ── AI Agents (Phase 5+) ──────────────────────────────────────────────────────
+langgraph>=0.2.14
+langchain>=0.2.16
+langchain-openai>=0.1.23
+langchain-core>=0.2.38
