@@ -454,6 +454,8 @@ class RejectOfferTool(BaseModel):
 
 ## Phase 6 — Merchant Agent
 
+**Status: 🔄 CURRENT**
+
 ### Objective
 Implement the AI Merchant Agent — LLM-powered, policy-bounded, able to evaluate buyer requests, generate offers, and request human approval when appropriate.
 
@@ -507,12 +509,17 @@ The merchant agent's system prompt must state explicitly:
 > "You MUST NEVER propose a unit_price below {minimum_price}. If the buyer requests a price below this floor, you MUST either reject or counter at the minimum price. The policy engine will independently validate this."
 
 ### Implementation Tasks
-1. Design merchant system prompt with policy variables injected
-2. Implement all merchant tools
-3. Implement `MerchantAgent.evaluate(request: BuyRequest)` method
-4. Implement offer generation with policy pre-check
-5. Implement human approval escalation pathway
-6. Add API routes for merchant dashboard actions
+- [ ] Merchant Agent architecture
+- [ ] Merchant state
+- [ ] Merchant tools
+- [ ] Merchant graph
+- [ ] Policy integration
+- [ ] Negotiation integration
+- [ ] Buyer ↔ Merchant flow
+- [ ] Human approval
+- [ ] Testing
+- [ ] Documentation
+- [ ] Demo
 
 ### Tests
 - `test_merchant_rejects_below_minimum_price` (Failure Case 2)
