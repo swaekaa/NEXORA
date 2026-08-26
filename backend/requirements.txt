@@ -20,8 +20,8 @@ httpx==0.27.0            # async HTTP client (test + agent requests)
 python-dotenv==1.0.1
 tzdata; sys_platform == 'win32'  # required for Alembic timezone parsing on Windows
 
-# NOTE: LLM SDKs (openai, anthropic) and razorpay are NOT included until Phase 5/9
-# They will be added when the relevant phases are implemented.
+# ── Payments (Phase 7+) ───────────────────────────────────────────────────────
+razorpay>=1.4.1
 
 # ── AI Agents (Phase 5+) ──────────────────────────────────────────────────────
 langgraph>=0.2.14

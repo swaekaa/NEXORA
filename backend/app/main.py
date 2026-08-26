@@ -203,18 +203,14 @@ def _register_routers(app: FastAPI) -> None:
     # ── Future routers (uncomment as phases are completed) ────────────────────
     # Phase 5:  from app.api.buyer import router as buyer_router
     #           app.include_router(buyer_router, prefix="/api/v1")
-    # Phase 7:  from app.api.negotiations import router as negotiations_router
-    #           app.include_router(negotiations_router, prefix="/api/v1")
+    # Phase 7:  
+    from app.api.v1.endpoints.payments import router as payments_router
+    app.include_router(payments_router, prefix="/api/v1")
+    from app.api.v1.endpoints.webhooks import router as webhooks_router
+    app.include_router(webhooks_router, prefix="/api/v1")
+    
     # Phase 8:  from app.api.agreements import router as agreements_router
     #           app.include_router(agreements_router, prefix="/api/v1")
-    # Phase 9:  from app.api.payments import router as payments_router
-    #           app.include_router(payments_router, prefix="/api/v1")
-    # Phase 10: from app.api.webhooks import router as webhooks_router
-    #           app.include_router(webhooks_router, prefix="/api/v1")
-    # Phase 11: from app.api.audit import router as audit_router
-    #           app.include_router(audit_router, prefix="/api/v1")
-    # Phase 12: from app.api.approvals import router as approvals_router
-    #           app.include_router(approvals_router, prefix="/api/v1")
 
 
 # ── Module-level app instance ──────────────────────────────────────────────────

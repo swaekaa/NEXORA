@@ -23,10 +23,11 @@ from app.models.product import Product, ProductStatus
 # ── Tier 3: Lifecycle entities ────────────────────────────────────────────────
 from app.models.negotiation import Negotiation, NegotiationState
 from app.models.negotiation_message import NegotiationMessage, SenderType, MessageType
+from app.models.payment import Payment, PaymentStatus
+from app.models.payment_webhook_event import PaymentWebhookEvent
 
 # ── Tier 4: Outcome entities ──────────────────────────────────────────────────
 from app.models.agreement import Agreement, AgreementStatus
-from app.models.payment import Payment, PaymentStatus
 
 __all__ = [
     # Models
@@ -38,6 +39,7 @@ __all__ = [
     "NegotiationMessage",
     "Agreement",
     "Payment",
+    "PaymentWebhookEvent",
     # Status / Enum helpers
     "MerchantStatus",
     "BuyerStatus",
