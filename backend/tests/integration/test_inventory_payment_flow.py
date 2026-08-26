@@ -59,6 +59,19 @@ async def setup_agreement(db_session: AsyncSession):
     )
     db_session.add(product)
     await db_session.flush()
+
+    from app.models.policy import Policy
+    policy = Policy(
+        merchant_id=merchant_id,
+        name="Test Policy",
+        minimum_price=Decimal("10.0"),
+        maximum_discount_percent=Decimal("50.0"),
+        maximum_autonomous_transaction=Decimal("50000.0"),
+        human_approval_required=False,
+        is_active=True
+    )
+    db_session.add(policy)
+    await db_session.flush()
     
     negotiation = Negotiation(
         buyer_id=buyer_id,

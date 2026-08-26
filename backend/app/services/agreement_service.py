@@ -18,6 +18,7 @@ from app.models.product import Product
 from app.policies.engine import PolicyEngine
 from app.policies.models import PolicyEvaluationRequest, PolicyEvaluationContext
 from app.policies.enums import PolicyDecision, ActionType
+from app.services.audit_service import record_event, AuditEventType
 
 
 class InvalidAgreementTransitionError(ValueError):
@@ -123,6 +124,16 @@ async def create_agreement_from_negotiation(
     )
     
     session.add(agreement)
+    
+    await record_event(
+        session=session,
+        event_type=AuditEventType.AGREEMENT_CREATED,
+        actor_type="SYSTEM",
+        agreement_id=agreement.id,
+        merchant_id=agreement.merchant_id,
+        metadata={"total_amount": str(agreement.total_amount)}
+    )
+    
     await session.commit()
     await session.refresh(agreement)
     
@@ -171,11 +182,30 @@ async def validate_agreement(
         agreement.status = AgreementStatus.VALIDATED.value
     elif result.decision == PolicyDecision.HUMAN_APPROVAL_REQUIRED:
         agreement.status = AgreementStatus.PENDING_APPROVAL.value
+        from app.services.approval_service import create_approval_request
+        reason = "One or more policies require human approval."
+        if result.failed_checks:
+            reason = result.failed_checks[0].reason
+        await create_approval_request(session, agreement, result.decision.value, reason)
     else:
         agreement.status = AgreementStatus.VALIDATION_FAILED.value
         agreement.blocking_reason = "Policy constraints violated after agreement."
         
     session.add(agreement)
+    
+    event_type = AuditEventType.AGREEMENT_VALIDATED if result.decision == PolicyDecision.ALLOW else AuditEventType.AGREEMENT_VALIDATION_FAILED
+    if result.decision == PolicyDecision.HUMAN_APPROVAL_REQUIRED:
+        event_type = AuditEventType.POLICY_CHECK
+        
+    await record_event(
+        session=session,
+        event_type=event_type,
+        actor_type="SYSTEM",
+        agreement_id=agreement.id,
+        merchant_id=agreement.merchant_id,
+        metadata={"policy_decision": result.decision.value}
+    )
+    
     await session.commit()
     await session.refresh(agreement)
     

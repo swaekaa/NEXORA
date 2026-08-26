@@ -14,10 +14,11 @@ This document outlines the Phase 7 integration of Razorpay for deterministic pay
 
 ## 3. Payment Initiation
 The client posts an `agreement_id` to `/api/v1/payments/initiate`.
-1. The server verifies the Agreement is `VALIDATED` or `APPROVED`.
-2. A local `Payment` intent is created in the database with status `CREATED`.
-3. The server calls the Razorpay API to create an Order.
-4. The local `Payment` intent is updated with the `razorpay_order_id`.
+1. The server verifies the Agreement is `VALIDATED` or `APPROVED`. If the agreement evaluated to `HUMAN_APPROVAL_REQUIRED` during validation, it will be in `PENDING_APPROVAL` status. Payment initiation is explicitly BLOCKED with a `PaymentServiceError` until the merchant explicitly approves the request.
+2. The server also checks the *current* active policy. Even if a human approved an agreement, if the merchant subsequently changed their policy to `DENY`, the payment will be blocked ("LLMs PROPOSE. DETERMINISTIC SYSTEMS DECIDE.")
+3. A local `Payment` intent is created in the database with status `CREATED`.
+4. The server calls the Razorpay API to create an Order.
+5. The local `Payment` intent is updated with the `razorpay_order_id`.
 
 ### External Race Condition (Orphaned Order)
 If Razorpay creates the order but the local database fails to commit the `razorpay_order_id`, the system will self-heal on the next request by fetching the order from Razorpay using the `receipt` field (`agr_{agreement_id}`).

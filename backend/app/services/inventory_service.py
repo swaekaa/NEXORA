@@ -18,6 +18,8 @@ from app.models.agreement import Agreement, AgreementStatus
 from app.models.inventory_reservation import InventoryReservation, ReservationStatus
 from app.database.base import utcnow
 from app.config import settings
+from app.services.audit_service import record_event, AuditEventType
+from app.models.approval_request import ApprovalStatus
 
 
 class InventoryServiceError(Exception):
@@ -57,9 +59,9 @@ async def reserve_inventory(session: AsyncSession, agreement_id: uuid.UUID) -> I
     if not agreement:
         raise InventoryServiceError("Agreement not found")
         
-    # We only reserve inventory if the agreement is validated (ready for payment)
-    if agreement.status != AgreementStatus.VALIDATED.value:
-        raise ReservationStateError(f"Agreement must be VALIDATED to reserve inventory, got {agreement.status}")
+    # We only reserve inventory if the agreement is validated or approved (ready for payment)
+    if agreement.status not in (AgreementStatus.VALIDATED.value, AgreementStatus.APPROVED.value):
+        raise ReservationStateError(f"Agreement must be VALIDATED or APPROVED to reserve inventory, got {agreement.status}")
 
     qty = agreement.quantity
     product_id = agreement.product_id
@@ -103,6 +105,15 @@ async def reserve_inventory(session: AsyncSession, agreement_id: uuid.UUID) -> I
     
     session.add(reservation)
     
+    await record_event(
+        session=session,
+        event_type=AuditEventType.INVENTORY_RESERVED,
+        actor_type="SYSTEM",
+        agreement_id=agreement_id,
+        merchant_id=agreement.merchant_id,
+        metadata={"product_id": str(product_id), "quantity": qty}
+    )
+    
     # We do not commit here! The caller is responsible for committing the transaction
     # to ensure atomicity with payment intent creation.
     return reservation
@@ -130,6 +141,20 @@ async def commit_reservation(session: AsyncSession, agreement_id: uuid.UUID) -> 
     reservation.status = ReservationStatus.COMMITTED.value
     reservation.expires_at = None
     session.add(reservation)
+    
+    # We need the merchant_id for the audit event.
+    result_agr = await session.execute(select(Agreement.merchant_id).where(Agreement.id == agreement_id))
+    merchant_id = result_agr.scalar_one_or_none()
+    
+    if merchant_id:
+        await record_event(
+            session=session,
+            event_type=AuditEventType.INVENTORY_COMMITTED,
+            actor_type="SYSTEM",
+            agreement_id=agreement_id,
+            merchant_id=merchant_id,
+            metadata={"product_id": str(reservation.product_id), "quantity": reservation.quantity}
+        )
 
 
 async def release_reservation(session: AsyncSession, agreement_id: uuid.UUID, is_expiration: bool = False) -> None:
@@ -164,6 +189,20 @@ async def release_reservation(session: AsyncSession, agreement_id: uuid.UUID, is
     reservation.status = ReservationStatus.EXPIRED.value if is_expiration else ReservationStatus.RELEASED.value
     reservation.expires_at = None
     session.add(reservation)
+    
+    # We need the merchant_id for the audit event.
+    result_agr = await session.execute(select(Agreement.merchant_id).where(Agreement.id == agreement_id))
+    merchant_id = result_agr.scalar_one_or_none()
+    
+    if merchant_id:
+        await record_event(
+            session=session,
+            event_type=AuditEventType.INVENTORY_EXPIRED if is_expiration else AuditEventType.INVENTORY_RELEASED,
+            actor_type="SYSTEM",
+            agreement_id=agreement_id,
+            merchant_id=merchant_id,
+            metadata={"product_id": str(reservation.product_id), "quantity": reservation.quantity}
+        )
 
 
 async def fulfill_reservation(session: AsyncSession, agreement_id: uuid.UUID) -> None:
@@ -186,6 +225,19 @@ async def fulfill_reservation(session: AsyncSession, agreement_id: uuid.UUID) ->
         
     reservation.status = ReservationStatus.FULFILLED.value
     session.add(reservation)
+    
+    result_agr = await session.execute(select(Agreement.merchant_id).where(Agreement.id == agreement_id))
+    merchant_id = result_agr.scalar_one_or_none()
+    
+    if merchant_id:
+        await record_event(
+            session=session,
+            event_type=AuditEventType.FULFILLMENT_COMPLETED,
+            actor_type="SYSTEM",
+            agreement_id=agreement_id,
+            merchant_id=merchant_id,
+            metadata={"product_id": str(reservation.product_id), "quantity": reservation.quantity}
+        )
 
 
 async def release_expired_reservations(session: AsyncSession) -> int:

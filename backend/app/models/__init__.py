@@ -29,6 +29,8 @@ from app.models.inventory_reservation import InventoryReservation, ReservationSt
 
 # ── Tier 4: Outcome entities ──────────────────────────────────────────────────
 from app.models.agreement import Agreement, AgreementStatus
+from app.models.approval_request import ApprovalRequest, ApprovalStatus
+from app.models.audit_event import AuditEvent
 
 __all__ = [
     # Models
@@ -42,6 +44,8 @@ __all__ = [
     "Payment",
     "PaymentWebhookEvent",
     "InventoryReservation",
+    "ApprovalRequest",
+    "AuditEvent",
     # Status / Enum helpers
     "MerchantStatus",
     "BuyerStatus",
@@ -51,4 +55,5 @@ __all__ = [
     "MessageType",
     "AgreementStatus",
     "PaymentStatus",
+    "ApprovalStatus",
 ]

@@ -204,10 +204,14 @@ def _register_routers(app: FastAPI) -> None:
     # Phase 5:  from app.api.buyer import router as buyer_router
     #           app.include_router(buyer_router, prefix="/api/v1")
     # Phase 7:  
-    from app.api.v1.endpoints import payments, webhooks, inventory
+    from app.api.v1.endpoints import payments, webhooks, inventory, approvals, audit
     app.include_router(payments.router, prefix="/api/v1")
     app.include_router(webhooks.router, prefix="/api/v1")
     app.include_router(inventory.router, prefix="/api/v1/inventory", tags=["Inventory"])
+    
+    # Phase 9: Approvals and Audit
+    app.include_router(approvals.router, prefix="/api/v1/merchants", tags=["Approvals"])
+    app.include_router(audit.router, prefix="/api/v1", tags=["Audit"])
     
     # Phase 8:  from app.api.agreements import router as agreements_router
     #           app.include_router(agreements_router, prefix="/api/v1")

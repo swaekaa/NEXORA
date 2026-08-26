@@ -233,26 +233,30 @@ States: `DISCOVER → REQUEST → OFFER → COUNTER_OFFER → ACCEPT → REJECT 
 10. PolicyEngine validates:
     - merchant minimum: 10820 >= 10500 ✓
     - buyer budget: 1082000 <= 1100000 ✓
-    - merchant autonomous limit: 1082000 <= 10000000 ✓
+    - merchant autonomous limit: 1082000 > 1000000 ✗ (Exceeds autonomous limit)
     - calculated total: 100 * 10820 = 1082000 = agreement.total ✓
-    → Result: PASS
+    → Result: REQUIRES_HUMAN_APPROVAL
 
-11. PaymentAuthLayer creates Razorpay Order:
+11. Agreement status set to PENDING_APPROVAL. ApprovalRequest created for Merchant. Payment is BLOCKED.
+
+12. Merchant reviews ApprovalRequest on Dashboard and clicks "Approve". Agreement status set to APPROVED.
+
+13. PaymentAuthLayer creates Razorpay Order:
     POST /v1/orders {amount: 108200000 (paise), currency: INR, receipt: agreement.id}
     → razorpay_order_id saved to agreement
 
-12. Frontend displays payment instructions (Test Mode card details)
+14. Frontend displays payment instructions (Test Mode card details)
 
-13. Test payment executed (Razorpay Checkout / Test Card)
+15. Test payment executed (Razorpay Checkout / Test Card)
 
-14. WebhookProcessor receives payment.captured event:
+16. WebhookProcessor receives payment.captured event:
     - Verify X-Razorpay-Signature (HMAC-SHA256)
     - Check X-Razorpay-Event-Id not already processed
     - Verify payment amount matches agreement amount
     - Update agreement status: PAID
     - Emit audit event: PAYMENT_CAPTURED
 
-15. AuditTrail records entire flow.
+17. AuditTrail records entire flow.
 ```
 
 ---

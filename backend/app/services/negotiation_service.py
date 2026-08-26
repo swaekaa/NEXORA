@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.negotiation import Negotiation, NegotiationState
 from app.models.negotiation_message import NegotiationMessage, SenderType, MessageType
 from app.schemas.negotiation import NegotiationMessagePayload
+from app.services.audit_service import record_event, AuditEventType
 
 
 class NegotiationTerminalError(ValueError):
@@ -155,6 +156,28 @@ async def append_negotiation_message(
     
     session.add(message)
     session.add(negotiation)
+    
+    if message_type == MessageType.ACCEPT:
+        await record_event(
+            session=session,
+            event_type=AuditEventType.NEGOTIATION_ACCEPTED,
+            actor_type=sender_type.value,
+            actor_id=uuid.UUID(sender_id) if sender_id != "SYSTEM" else None,
+            negotiation_id=negotiation.id,
+            merchant_id=negotiation.merchant_id,
+            metadata={"round": negotiation.round_count}
+        )
+    elif message_type == MessageType.REJECT:
+        await record_event(
+            session=session,
+            event_type=AuditEventType.NEGOTIATION_REJECTED,
+            actor_type=sender_type.value,
+            actor_id=uuid.UUID(sender_id) if sender_id != "SYSTEM" else None,
+            negotiation_id=negotiation.id,
+            merchant_id=negotiation.merchant_id,
+            metadata={"round": negotiation.round_count, "reason": content or "No reason provided"}
+        )
+        
     await session.commit()
     await session.refresh(message)
     

@@ -339,6 +339,57 @@ agreement
 
 ---
 
+### approval_requests
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| id | UUID | PK | |
+| agreement_id | UUID | FK→agreements.id ON DELETE CASCADE | |
+| merchant_id | UUID | FK→merchants.id ON DELETE CASCADE | |
+| status | VARCHAR(30) | NOT NULL, DEFAULT 'pending' | pending \| approved \| rejected |
+| request_reason | TEXT | NOT NULL | Why was approval required? |
+| reviewer_id | UUID | nullable | Who reviewed this |
+| reviewed_at | TIMESTAMPTZ | nullable | |
+| review_notes | TEXT | nullable | |
+| created_at | TIMESTAMPTZ | NOT NULL | |
+| updated_at | TIMESTAMPTZ | NOT NULL | |
+
+**Check constraints:**
+- `ck_approval_status`: `status IN ('pending', 'approved', 'rejected')`
+
+**Indexes:**
+- `idx_approvals_merchant_id` on `(merchant_id)`
+- `idx_approvals_agreement_id` on `(agreement_id)`
+- `idx_approvals_status` on `(status)`
+
+---
+
+### audit_events
+
+**APPEND-ONLY** — immutable ledger of system activity.
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| id | UUID | PK | |
+| timestamp | TIMESTAMPTZ | NOT NULL | |
+| event_type | VARCHAR(50) | NOT NULL | policy_check \| agreement_validated \| etc. |
+| actor_type | VARCHAR(20) | NOT NULL | system \| buyer \| merchant \| agent |
+| actor_id | VARCHAR(255) | nullable | User or Agent ID |
+| entity_type | VARCHAR(50) | nullable | agreement \| negotiation \| policy |
+| entity_id | VARCHAR(255) | nullable | |
+| negotiation_id | UUID | nullable, FK→negotiations.id | |
+| agreement_id | UUID | nullable, FK→agreements.id | |
+| merchant_id | UUID | nullable, FK→merchants.id | |
+| metadata | JSONB | NOT NULL, DEFAULT '{}' | Event specific structured context |
+
+**Indexes:**
+- `idx_audit_timestamp` on `(timestamp)`
+- `idx_audit_merchant_id` on `(merchant_id)`
+- `idx_audit_agreement_id` on `(agreement_id)`
+- `idx_audit_negotiation_id` on `(negotiation_id)`
+
+---
+
 ## 5. Deletion Behavior Summary
 
 | Relationship | ON DELETE | Rationale |

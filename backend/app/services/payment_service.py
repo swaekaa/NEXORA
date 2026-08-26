@@ -6,6 +6,7 @@ Orchestrates local Payment creation, Razorpay order integration, and Webhook pro
 import uuid
 import json
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +22,12 @@ from app.services.inventory_service import (
     commit_reservation, 
     release_reservation
 )
-
+from app.services.policy_service import list_policies
+from app.policies.engine import PolicyEngine
+from app.policies.models import PolicyEvaluationRequest, PolicyEvaluationContext
+from app.policies.enums import ActionType, PolicyDecision
+from app.models.approval_request import ApprovalRequest, ApprovalStatus
+from app.services.audit_service import record_event, AuditEventType
 
 class PaymentServiceError(ValueError):
     pass
@@ -63,11 +69,54 @@ async def initiate_payment(
     if not agreement:
         raise PaymentServiceError("Agreement not found")
         
-    if agreement.status not in (AgreementStatus.VALIDATED.value, AgreementStatus.APPROVED.value):
-        raise PaymentServiceError(f"Agreement is not ready for payment. Status: {agreement.status}")
-        
     if agreement.currency != "INR":
         raise PaymentServiceError("Only INR currency is supported for Razorpay payments")
+        
+    # Phase 9: Final Policy Revalidation
+    active_policies = [p for p in await list_policies(session, agreement.merchant_id) if p.is_active]
+    if not active_policies:
+        raise PaymentServiceError("No active policy found for merchant. Payment blocked.")
+    active_policy = active_policies[0]
+    
+    policy_context = PolicyEvaluationContext(
+        merchant_id=agreement.merchant_id,
+        policy_id=active_policy.id,
+        minimum_price=active_policy.minimum_price,
+        maximum_discount_percent=active_policy.maximum_discount_percent,
+        maximum_autonomous_transaction=active_policy.maximum_autonomous_transaction,
+        human_approval_required=active_policy.human_approval_required
+    )
+    
+    policy_request = PolicyEvaluationRequest(
+        action=ActionType.CREATE_AGREEMENT,
+        merchant_id=agreement.merchant_id,
+        product_id=agreement.product_id,
+        unit_price=agreement.unit_price,
+        quantity=agreement.quantity,
+        total_amount=agreement.total_amount,
+        currency=agreement.currency,
+        discount_percent=Decimal("0.0")
+    )
+    
+    engine = PolicyEngine()
+    policy_result = engine.evaluate(policy_request, policy_context)
+    
+    if policy_result.decision == PolicyDecision.DENY:
+        raise PaymentServiceError("Policy DENY: Payment blocked by final deterministic policy check.")
+        
+    if policy_result.decision == PolicyDecision.HUMAN_APPROVAL_REQUIRED:
+        # Require an APPROVED ApprovalRequest
+        result = await session.execute(
+            select(ApprovalRequest).where(ApprovalRequest.agreement_id == agreement_id)
+        )
+        approval = result.scalar_one_or_none()
+        if not approval or approval.status != ApprovalStatus.APPROVED:
+            raise PaymentServiceError("HUMAN_APPROVAL_REQUIRED: A valid approved request is missing. Payment blocked.")
+            
+    # If ALLOW, or HUMAN_APPROVAL_REQUIRED with APPROVED request -> Proceed
+    
+    if agreement.status not in (AgreementStatus.VALIDATED.value, AgreementStatus.APPROVED.value):
+        raise PaymentServiceError(f"Agreement is not ready for payment. Status: {agreement.status}")
         
     # 2. Convert to paise
     amount_paise = convert_decimal_to_paise(agreement.total_amount)
@@ -128,6 +177,15 @@ async def initiate_payment(
     
     agreement.status = AgreementStatus.PAYMENT_INITIATED.value
     session.add(agreement)
+    
+    await record_event(
+        session=session,
+        event_type=AuditEventType.PAYMENT_INITIATED,
+        actor_type="SYSTEM",
+        agreement_id=agreement.id,
+        merchant_id=agreement.merchant_id,
+        metadata={"payment_id": str(payment.id), "razorpay_order_id": order_id}
+    )
     
     try:
         await session.commit()
@@ -247,6 +305,15 @@ async def _handle_payment_captured(session: AsyncSession, payload: dict) -> None
         # Phase 8: Commit inventory reservation
         await commit_reservation(session, agreement.id)
         
+        await record_event(
+            session=session,
+            event_type=AuditEventType.PAYMENT_CAPTURED,
+            actor_type="SYSTEM",
+            agreement_id=agreement.id,
+            merchant_id=agreement.merchant_id,
+            metadata={"payment_id": str(payment.id), "razorpay_payment_id": payment_id}
+        )
+        
     session.add(payment)
 
 
@@ -278,5 +345,14 @@ async def _handle_payment_failed(session: AsyncSession, payload: dict) -> None:
         
         # Phase 8: Release inventory reservation
         await release_reservation(session, agreement.id)
+        
+        await record_event(
+            session=session,
+            event_type=AuditEventType.PAYMENT_FAILED,
+            actor_type="SYSTEM",
+            agreement_id=agreement.id,
+            merchant_id=agreement.merchant_id,
+            metadata={"payment_id": str(payment.id), "razorpay_order_id": order_id}
+        )
         
     session.add(payment)
