@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     NEGOTIATION_TIMEOUT_MINUTES: int = 30
     MAX_TOOL_RETRIES: int = 3
 
+    # ── Inventory (Phase 8) ───────────────────────────────────────────────────
+    INVENTORY_RESERVATION_TTL_MINUTES: int = 15
+
     @field_validator("LOG_LEVEL")
     @classmethod
     def validate_log_level(cls, v: str) -> str:

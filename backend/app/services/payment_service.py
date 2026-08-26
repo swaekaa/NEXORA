@@ -16,6 +16,11 @@ from app.models.payment import Payment, PaymentStatus
 from app.models.payment_webhook_event import PaymentWebhookEvent
 from app.payments.utils import convert_decimal_to_paise
 from app.payments.razorpay_client import RazorpayClientProtocol
+from app.services.inventory_service import (
+    reserve_inventory, 
+    commit_reservation, 
+    release_reservation
+)
 
 
 class PaymentServiceError(ValueError):
@@ -75,26 +80,40 @@ async def initiate_payment(
             raise PaymentServiceError(f"Payment already in progress. Status: {existing_payment.status}")
         return existing_payment
             
+    # Phase 8: Atomic Inventory Reservation BEFORE Razorpay
+    await reserve_inventory(session, agreement_id)
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise PaymentServiceError("A payment is already being initiated for this agreement")
+            
     # Recovery Scenario: Razorpay order was created, but DB update failed (e.g. crash).
     # We search Razorpay by receipt.
     receipt_id = f"agr_{str(agreement_id)[:35]}"
-    orders = razorpay_client.fetch_orders_by_receipt(receipt_id)
     
-    if orders:
-        order_id = orders[0]["id"]
-    else:
-        notes = {
-            "agreement_id": str(agreement_id),
-            "merchant_id": str(agreement.merchant_id),
-            "buyer_id": str(agreement.buyer_id)
-        }
-        order = razorpay_client.create_order(
-            amount_paise=amount_paise,
-            currency=agreement.currency,
-            receipt=receipt_id,
-            notes=notes
-        )
-        order_id = order["id"]
+    try:
+        orders = razorpay_client.fetch_orders_by_receipt(receipt_id)
+        if orders:
+            order_id = orders[0]["id"]
+        else:
+            notes = {
+                "agreement_id": str(agreement_id),
+                "merchant_id": str(agreement.merchant_id),
+                "buyer_id": str(agreement.buyer_id)
+            }
+            order = razorpay_client.create_order(
+                amount_paise=amount_paise,
+                currency=agreement.currency,
+                receipt=receipt_id,
+                notes=notes
+            )
+            order_id = order["id"]
+    except Exception as e:
+        # Razorpay explicitly failed. We must release the reservation immediately.
+        await release_reservation(session, agreement_id)
+        await session.commit()
+        raise PaymentServiceError("Failed to initiate Razorpay order") from e
 
     # Insert into DB
     payment = Payment(
@@ -115,6 +134,10 @@ async def initiate_payment(
         await session.refresh(payment)
     except IntegrityError:
         await session.rollback()
+        # Edge case: concurrent payment creation.
+        # This shouldn't happen due to the reservation lock, but just in case:
+        await release_reservation(session, agreement_id)
+        await session.commit()
         raise PaymentServiceError("A payment is already being initiated for this agreement")
     
     return payment
@@ -221,6 +244,9 @@ async def _handle_payment_captured(session: AsyncSession, payload: dict) -> None
         agreement.status = AgreementStatus.PAYMENT_CAPTURED.value
         session.add(agreement)
         
+        # Phase 8: Commit inventory reservation
+        await commit_reservation(session, agreement.id)
+        
     session.add(payment)
 
 
@@ -249,5 +275,8 @@ async def _handle_payment_failed(session: AsyncSession, payload: dict) -> None:
     if agreement:
         agreement.status = AgreementStatus.PAYMENT_FAILED.value
         session.add(agreement)
+        
+        # Phase 8: Release inventory reservation
+        await release_reservation(session, agreement.id)
         
     session.add(payment)

@@ -25,6 +25,7 @@ from app.models.negotiation import Negotiation, NegotiationState
 from app.models.negotiation_message import NegotiationMessage, SenderType, MessageType
 from app.models.payment import Payment, PaymentStatus
 from app.models.payment_webhook_event import PaymentWebhookEvent
+from app.models.inventory_reservation import InventoryReservation, ReservationStatus
 
 # ── Tier 4: Outcome entities ──────────────────────────────────────────────────
 from app.models.agreement import Agreement, AgreementStatus
@@ -40,6 +41,7 @@ __all__ = [
     "Agreement",
     "Payment",
     "PaymentWebhookEvent",
+    "InventoryReservation",
     # Status / Enum helpers
     "MerchantStatus",
     "BuyerStatus",
