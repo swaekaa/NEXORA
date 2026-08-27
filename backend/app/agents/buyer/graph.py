@@ -2,48 +2,46 @@
 NEXORA — Buyer Agent Graph
 
 Orchestrates the LLM, deterministic boundaries, and policy validation.
+Evolved for Phase 10 to support multi-round negotiations and real DB access.
 """
-from typing import Any
-
 from langgraph.graph import END, StateGraph
 
-from app.agents.buyer.nodes import execute_action_node, run_llm_node, validate_proposal_node
+from app.agents.buyer.nodes import (
+    execute_action_node, 
+    run_llm_node, 
+    validate_proposal_node,
+    submit_proposal_node,
+    read_negotiation_state_node
+)
 from app.agents.buyer.policy_node import policy_check_node, proposal_recovery_node, route_policy_decision
 from app.agents.buyer.schemas import BuyerAgentState
 
 
-def create_buyer_agent_graph(policy_context_data: dict) -> StateGraph:
+def create_buyer_agent_graph() -> StateGraph:
     """
     Builds the LangGraph state machine.
-    We inject the policy_context_data so it doesn't need to fetch it internally.
+    We rely on RunnableConfig (injected by runner) for DB sessions and context.
     """
     workflow = StateGraph(BuyerAgentState)
     
     # ── Nodes ──
+    workflow.add_node("read_negotiation_state", read_negotiation_state_node)
     workflow.add_node("run_llm", run_llm_node)
     workflow.add_node("execute_action", execute_action_node)
     workflow.add_node("validate_proposal", validate_proposal_node)
-    
-    # Curry the policy node with the context
-    def bound_policy_check(state: BuyerAgentState):
-        return policy_check_node(state, policy_context_data)
-        
-    workflow.add_node("policy_check", bound_policy_check)
+    workflow.add_node("policy_check", policy_check_node)
+    workflow.add_node("submit_proposal", submit_proposal_node)
     workflow.add_node("proposal_recovery", proposal_recovery_node)
     
-    # Terminal / External Nodes (Just update state for now)
+    # Terminal / External Nodes
     def await_human_approval(state: BuyerAgentState):
         return {"status": "awaiting_human_approval"}
     workflow.add_node("await_human_approval", await_human_approval)
     
-    def create_negotiation_node(state: BuyerAgentState):
-        # The actual DB creation is handled by the calling service that executes the graph,
-        # so this node just marks completion.
-        return {"status": "completed"}
-    workflow.add_node("create_negotiation", create_negotiation_node)
-    
     # ── Edges ──
-    workflow.set_entry_point("run_llm")
+    # Always read the latest DB state before making a decision
+    workflow.set_entry_point("read_negotiation_state")
+    workflow.add_edge("read_negotiation_state", "run_llm")
     
     workflow.add_edge("run_llm", "execute_action")
     
@@ -51,10 +49,14 @@ def create_buyer_agent_graph(policy_context_data: dict) -> StateGraph:
     def route_after_action(state: BuyerAgentState):
         if state["status"] in ["completed", "failed"]:
             return "END"
+            
         action = state["current_action"]
-        if action.action == "PROPOSE_AGREEMENT":
+        if action.action in ["PROPOSE_AGREEMENT", "COUNTER_PROPOSAL"]:
             return "validate_proposal"
-        # Otherwise, go back to LLM to take next action
+        elif action.action == "ACCEPT_COUNTER":
+            return "submit_proposal"
+            
+        # Otherwise, go back to LLM to take next action (like searching)
         return "run_llm"
         
     workflow.add_conditional_edges(
@@ -63,6 +65,7 @@ def create_buyer_agent_graph(policy_context_data: dict) -> StateGraph:
         {
             "END": END,
             "validate_proposal": "validate_proposal",
+            "submit_proposal": "submit_proposal",
             "run_llm": "run_llm"
         }
     )
@@ -73,7 +76,7 @@ def create_buyer_agent_graph(policy_context_data: dict) -> StateGraph:
         "policy_check",
         route_policy_decision,
         {
-            "create_negotiation": "create_negotiation",
+            "submit_proposal": "submit_proposal",
             "await_human_approval": "await_human_approval",
             "proposal_recovery": "proposal_recovery",
             "run_llm": "run_llm",
@@ -90,7 +93,7 @@ def create_buyer_agent_graph(policy_context_data: dict) -> StateGraph:
         }
     )
     
-    workflow.add_edge("create_negotiation", END)
+    workflow.add_edge("submit_proposal", END)
     workflow.add_edge("await_human_approval", END)
     
     return workflow.compile()

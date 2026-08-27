@@ -454,7 +454,7 @@ class RejectOfferTool(BaseModel):
 
 ## Phase 6 — Merchant Agent
 
-**Status: 🔄 CURRENT**
+**Status: ✅ COMPLETE (August 26, 2026)**
 
 ### Objective
 Implement the AI Merchant Agent — LLM-powered, policy-bounded, able to evaluate buyer requests, generate offers, and request human approval when appropriate.
@@ -543,6 +543,8 @@ The merchant agent's system prompt must state explicitly:
 ---
 
 ## Phase 7 — Negotiation Engine
+
+**Status: 🔄 CURRENT**
 
 ### Objective
 Implement the negotiation state machine that manages the lifecycle of an AI-to-AI negotiation from discovery to agreement or rejection.

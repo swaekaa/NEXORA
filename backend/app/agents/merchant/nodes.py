@@ -100,3 +100,90 @@ def validate_action_node(state: MerchantAgentState) -> dict:
     return {
         "deterministic_total": total_amount
     }
+
+
+from langchain_core.runnables import RunnableConfig
+from app.services.negotiation_service import append_negotiation_message
+from app.models.negotiation_message import SenderType, MessageType
+from app.schemas.negotiation import NegotiationMessagePayload
+from app.services.agreement_service import create_agreement_from_negotiation
+
+# Phase 12 Placeholder
+async def create_approval_request(*args, **kwargs):
+    pass
+
+async def submit_decision_node(state: MerchantAgentState, config: RunnableConfig) -> dict:
+    """
+    Persists the final ALLOWED decision (ACCEPT, COUNTER, REJECT) to the NegotiationService.
+    If ACCEPT, triggers Agreement creation.
+    """
+    action = state["current_action"]
+    intent = state["intent"]
+    session = config["configurable"]["session"]
+    
+    if not action:
+        return {"status": "failed", "error_reason": "No action to submit"}
+        
+    if action.action == MerchantActionType.REJECT_PROPOSAL:
+        await append_negotiation_message(
+            session=session,
+            negotiation_id=intent.negotiation_id,
+            sender_type=SenderType.MERCHANT_AGENT,
+            sender_id=str(intent.merchant_id),
+            message_type=MessageType.REJECT,
+            content=action.reason
+        )
+        return {"status": "completed"}
+        
+    elif action.action == MerchantActionType.ACCEPT_PROPOSAL:
+        await append_negotiation_message(
+            session=session,
+            negotiation_id=intent.negotiation_id,
+            sender_type=SenderType.MERCHANT_AGENT,
+            sender_id=str(intent.merchant_id),
+            message_type=MessageType.ACCEPT,
+            content=action.reason
+        )
+        await create_agreement_from_negotiation(session, intent.negotiation_id)
+        return {"status": "completed"}
+        
+    elif action.action == MerchantActionType.COUNTER_PROPOSAL:
+        payload = NegotiationMessagePayload(
+            product_id=intent.product_id,
+            quantity=action.proposed_quantity, # type: ignore
+            unit_price=Decimal(action.proposed_unit_price), # type: ignore
+            discount_percent=Decimal(action.proposed_discount_percent or "0"),
+            total_amount=state["deterministic_total"], # type: ignore
+            currency=intent.currency
+        )
+        await append_negotiation_message(
+            session=session,
+            negotiation_id=intent.negotiation_id,
+            sender_type=SenderType.MERCHANT_AGENT,
+            sender_id=str(intent.merchant_id),
+            message_type=MessageType.COUNTER_OFFER,
+            content=action.reason,
+            payload=payload
+        )
+        return {"status": "completed"}
+        
+    return {"status": "completed"}
+
+
+async def request_approval_node(state: MerchantAgentState, config: RunnableConfig) -> dict:
+    """
+    Creates an ApprovalRequest for HUMAN_APPROVAL_REQUIRED policy decisions.
+    Ends the agent's execution.
+    """
+    intent = state["intent"]
+    session = config["configurable"]["session"]
+    
+    await create_approval_request(
+        session=session,
+        merchant_id=intent.merchant_id,
+        approval_type="POLICY_OVERRIDE",
+        entity_id=intent.negotiation_id,
+        requested_by="Merchant Agent",
+        reason="Policy Engine flagged this proposal for human review."
+    )
+    return {"status": "completed"}

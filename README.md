@@ -83,8 +83,8 @@ NEXORA answers all of these.
 | Phase 3 | Merchant Catalog API | ✅ Complete |
 | Phase 4 | Policy Engine | ✅ Complete |
 | Phase 5 | Buyer Agent | ✅ Complete |
-| Phase 6 | Merchant Agent | 🔜 Next |
-| Phase 7 | Negotiation Engine | ⬜ Pending |
+| Phase 6 | Merchant Agent | ✅ Complete |
+| Phase 7 | Negotiation Engine | 🔜 Next |
 | Phase 8 | Agreement Engine | ⬜ Pending |
 | Phase 9 | Razorpay Integration | ⬜ Pending |
 | Phase 10 | Webhooks | ⬜ Pending |

@@ -1,15 +1,16 @@
-"""
-NEXORA — Merchant Agent Graph
-"""
 from typing import Literal
 
 from langgraph.graph import END, StateGraph
 
-from app.agents.merchant.nodes import run_llm_node, validate_action_node
+from app.agents.merchant.nodes import (
+    run_llm_node,
+    validate_action_node,
+    submit_decision_node,
+    request_approval_node,
+)
 from app.agents.merchant.policy_node import (
     counter_offer_recovery_node,
     policy_check_node,
-    route_policy_decision,
 )
 from app.agents.merchant.schemas import MerchantActionType, MerchantAgentState
 
@@ -19,21 +20,35 @@ def route_after_llm(state: MerchantAgentState) -> Literal["validate_action", "co
     if not action:
         return "completed" # Should not happen unless failed
     
-    if action.action in (MerchantActionType.STOP, MerchantActionType.REJECT_PROPOSAL):
+    if action.action == MerchantActionType.STOP:
         return "completed"
         
+    # REJECT_PROPOSAL goes to validate_action so it can be routed to policy_check/submit_decision
     return "validate_action"
 
 
-def route_after_validation(state: MerchantAgentState) -> Literal["policy_check", "completed", "failed"]:
+def route_after_validation(state: MerchantAgentState) -> Literal["policy_check", "submit_decision", "failed"]:
     if state["status"] == "failed":
         return "failed"
-    if state["status"] == "completed":
-        return "completed"
-    if state["status"] == "awaiting_human_approval":
-        return "completed"
+    
+    action = state.get("current_action")
+    if action and action.action == MerchantActionType.REJECT_PROPOSAL:
+        return "submit_decision"
         
     return "policy_check"
+
+
+from app.policies.enums import PolicyDecision
+
+def route_after_policy(state: MerchantAgentState) -> Literal["submit_decision", "request_approval", "recover"]:
+    decision = state.get("policy_decision")
+    
+    if decision == PolicyDecision.ALLOW.value:
+        return "submit_decision"
+    elif decision == PolicyDecision.HUMAN_APPROVAL_REQUIRED.value:
+        return "request_approval"
+    else:
+        return "recover"
 
 
 def route_after_recovery(state: MerchantAgentState) -> Literal["run_llm", "failed"]:
@@ -52,6 +67,8 @@ def build_merchant_agent_graph() -> StateGraph:
     workflow.add_node("run_llm", run_llm_node)
     workflow.add_node("validate_action", validate_action_node)
     workflow.add_node("policy_check", policy_check_node)
+    workflow.add_node("submit_decision", submit_decision_node)
+    workflow.add_node("request_approval", request_approval_node)
     workflow.add_node("recovery", counter_offer_recovery_node)
     
     # Set entry point
@@ -67,13 +84,13 @@ def build_merchant_agent_graph() -> StateGraph:
         }
     )
     
-    # Validate -> Policy Check
+    # Validate -> Policy Check / Submit
     workflow.add_conditional_edges(
         "validate_action",
         route_after_validation,
         {
             "policy_check": "policy_check",
-            "completed": END,
+            "submit_decision": "submit_decision",
             "failed": END
         }
     )
@@ -81,10 +98,10 @@ def build_merchant_agent_graph() -> StateGraph:
     # Policy Check -> Decision Routing
     workflow.add_conditional_edges(
         "policy_check",
-        route_policy_decision,
+        route_after_policy,
         {
-            "completed": END,
-            "awaiting_human_approval": END,
+            "submit_decision": "submit_decision",
+            "request_approval": "request_approval",
             "recover": "recovery"
         }
     )
@@ -98,5 +115,9 @@ def build_merchant_agent_graph() -> StateGraph:
             "failed": END
         }
     )
+    
+    # Terminal nodes
+    workflow.add_edge("submit_decision", END)
+    workflow.add_edge("request_approval", END)
     
     return workflow.compile()

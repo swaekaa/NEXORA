@@ -40,13 +40,20 @@ def _build_engine() -> AsyncEngine:
     Build the SQLAlchemy async engine.
     Called once at module import — the engine is a singleton.
     """
+    from sqlalchemy.pool import NullPool
+    
+    if settings.ENVIRONMENT == "test":
+        return create_async_engine(
+            settings.DATABASE_URL,
+            poolclass=NullPool,
+            echo=settings.DB_ECHO,
+        )
+    
     return create_async_engine(
         settings.DATABASE_URL,
         pool_size=settings.DB_POOL_SIZE,
         max_overflow=settings.DB_MAX_OVERFLOW,
-        # echo=True emits every SQL statement — only enable for debug sessions
         echo=settings.DB_ECHO,
-        # Use pool_pre_ping to detect stale connections
         pool_pre_ping=True,
     )
 

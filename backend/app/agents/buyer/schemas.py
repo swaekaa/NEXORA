@@ -18,6 +18,7 @@ class BuyerIntent(BaseModel):
     """
     buyer_id: uuid.UUID
     merchant_id: uuid.UUID
+    negotiation_id: uuid.UUID | None = None
     product_query: str = Field(..., min_length=1)
     quantity: int = Field(..., gt=0)
     maximum_budget: Decimal = Field(..., max_digits=18, decimal_places=2)
@@ -33,6 +34,8 @@ class ActionType(str, Enum):
     SEARCH_PRODUCTS = "SEARCH_PRODUCTS"
     SELECT_PRODUCT = "SELECT_PRODUCT"
     PROPOSE_AGREEMENT = "PROPOSE_AGREEMENT"
+    ACCEPT_COUNTER = "ACCEPT_COUNTER"
+    COUNTER_PROPOSAL = "COUNTER_PROPOSAL"
     STOP = "STOP"
 
 
@@ -77,12 +80,17 @@ class BuyerAgentState(TypedDict):
     # Negotiation context
     selected_product_id: uuid.UUID | None
     proposal_revisions: int  # Track how many times a proposal was rejected and revised
+    negotiation_round: int
     
     # LLM Structured Action
     current_action: BuyerAgentAction | None
     
     # Deterministic calculation state
     deterministic_total: Decimal | None
+    
+    # Merchant feedback state
+    merchant_counter: dict[str, Any] | None
+    negotiation_status: str | None
     
     # Policy outcome
     policy_decision: Literal["ALLOW", "HUMAN_APPROVAL_REQUIRED", "DENY"] | None

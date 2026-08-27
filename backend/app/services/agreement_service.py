@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agreement import Agreement, AgreementStatus
 from app.models.negotiation import Negotiation, NegotiationState
-from app.models.negotiation_message import NegotiationMessage
+from app.models.negotiation_message import NegotiationMessage, MessageType
 from app.models.product import Product
 from app.policies.engine import PolicyEngine
 from app.policies.models import PolicyEvaluationRequest, PolicyEvaluationContext
@@ -60,10 +60,11 @@ async def create_agreement_from_negotiation(
     if existing_result.scalar_one_or_none():
         raise ValueError(f"Agreement already exists for negotiation {negotiation_id}")
         
-    # 2. Fetch the FINAL message
+    # 2. Fetch the final PROPOSAL (the one that was accepted)
     msg_result = await session.execute(
         select(NegotiationMessage)
         .where(NegotiationMessage.negotiation_id == negotiation_id)
+        .where(NegotiationMessage.message_type.in_([MessageType.OFFER.value, MessageType.COUNTER_OFFER.value]))
         .order_by(NegotiationMessage.sequence_number.desc())
         .limit(1)
     )

@@ -48,11 +48,11 @@ def policy_check_node(state: MerchantAgentState) -> dict:
     
     context = PolicyEvaluationContext(
         merchant_id=intent.merchant_id,
-        policy_id=uuid.uuid4(),  # Mock ID for engine context
+        policy_id=intent.policy_id,
         minimum_price=intent.policy_minimum_price,
         maximum_discount_percent=intent.policy_maximum_discount_percent,
         maximum_autonomous_transaction=intent.policy_maximum_autonomous_transaction,
-        human_approval_required=False
+        human_approval_required=intent.policy_requires_human_approval
     )
     
     engine = PolicyEngine()
@@ -62,20 +62,6 @@ def policy_check_node(state: MerchantAgentState) -> dict:
         "policy_decision": result.decision.value,
         "policy_reasons": [c.reason for c in result.failed_checks] if result.failed_checks else []
     }
-
-
-def route_policy_decision(state: MerchantAgentState) -> Literal["completed", "awaiting_human_approval", "recover"]:
-    """
-    Routes the execution based on the policy decision.
-    """
-    decision = state.get("policy_decision")
-    
-    if decision == PolicyDecision.ALLOW.value:
-        return "completed"
-    elif decision == PolicyDecision.HUMAN_APPROVAL_REQUIRED.value:
-        return "awaiting_human_approval"
-    else:
-        return "recover"
 
 
 def counter_offer_recovery_node(state: MerchantAgentState) -> dict:

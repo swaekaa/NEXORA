@@ -67,26 +67,18 @@ async def client(app) -> AsyncGenerator[AsyncClient, None]:
         yield ac
 
 
-@pytest_asyncio.fixture(scope="session", autouse=True)
+@pytest_asyncio.fixture(autouse=True)
 async def cleanup_database_pool():
     """
-    Gracefully dispose the global database engine pool at the end of the test session.
-    This prevents 'RuntimeError: Event loop is closed' caused by asyncpg 
-    trying to clean up connections after the pytest event loop is shut down.
+    Gracefully dispose the global database engine pool at the end of each test.
+    Because tests run in isolated function-scoped event loops, the engine pool 
+    must be disposed before the test's event loop closes. This guarantees 
+    that asyncpg connections are cleanly terminated in the active loop.
     """
     yield
     from app.database.connection import engine
     await engine.dispose()
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """
-    Force pytest-asyncio to use a single event loop for the entire test session.
-    Because our database engine (pool) is created globally, if the event loop
-    closes between tests, asyncpg background tasks will crash.
-    """
+    
+    # Windows ProactorEventLoop requires a brief moment to flush SSL/asyncpg sockets
     import asyncio
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+    await asyncio.sleep(0.250)

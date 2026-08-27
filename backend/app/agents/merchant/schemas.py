@@ -25,9 +25,13 @@ class MerchantIntent(BaseModel):
     buyer_proposed_discount_percent: Decimal
     
     # The merchant's constraints (loaded by service, not hallucinated)
+    policy_id: uuid.UUID
     policy_minimum_price: Decimal
     policy_maximum_discount_percent: Decimal
     policy_maximum_autonomous_transaction: Decimal
+    policy_requires_human_approval: bool
+    
+    currency: str = "INR"
     
     # Negotiation history
     round_count: int

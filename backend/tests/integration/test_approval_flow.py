@@ -47,7 +47,7 @@ async def setup_test_negotiation(db_session):
         negotiation_id=negotiation_id,
         sender_type="buyer_agent",
         sender_id=str(buyer_id),
-        message_type="accept",
+        message_type="offer",
         sequence_number=1,
         payload={
             "quantity": 10,

@@ -4,7 +4,7 @@ Tests the orchestration, constraints, and policy integration without real LLMs.
 """
 import uuid
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 from langchain_core.messages import AIMessage
@@ -38,9 +38,11 @@ def base_intent():
         buyer_proposed_quantity=100,
         buyer_proposed_unit_price=Decimal("9000.00"),
         buyer_proposed_discount_percent=Decimal("0.0"),
+        policy_id=uuid.uuid4(),
         policy_minimum_price=Decimal("10000.00"),
         policy_maximum_discount_percent=Decimal("5.0"),
         policy_maximum_autonomous_transaction=Decimal("5000000.00"),
+        policy_requires_human_approval=False,
         round_count=1,
         max_rounds=10,
         product_description="Test Product",
@@ -65,7 +67,19 @@ def base_state(base_intent) -> MerchantAgentState:
     }
 
 
-def test_merchant_accepts_valid_proposal(mock_llm, base_intent, base_state):
+@pytest.fixture
+def mock_session():
+    return MagicMock()
+
+
+@pytest.fixture
+def graph_config(mock_session):
+    return {"configurable": {"session": mock_session}}
+
+
+@patch("app.agents.merchant.nodes.append_negotiation_message", new_callable=AsyncMock)
+@patch("app.agents.merchant.nodes.create_agreement_from_negotiation", new_callable=AsyncMock)
+async def test_merchant_accepts_valid_proposal(mock_create_agreement, mock_append, mock_llm, base_intent, base_state, graph_config):
     # Setup intent so buyer's proposal is VALID
     base_intent.buyer_proposed_unit_price = Decimal("10500.00")
     
@@ -76,27 +90,34 @@ def test_merchant_accepts_valid_proposal(mock_llm, base_intent, base_state):
     )
     
     graph = build_merchant_agent_graph()
-    result = graph.invoke(base_state)
+    result = await graph.ainvoke(base_state, config=graph_config)
     
     assert result["current_action"].action == MerchantActionType.ACCEPT_PROPOSAL
     assert result["deterministic_total"] == Decimal("1050000.00")  # 10500 * 100
     assert result["policy_decision"] == PolicyDecision.ALLOW.value
+    assert result["status"] == "completed"
+    
+    mock_append.assert_called_once()
+    mock_create_agreement.assert_called_once()
 
 
-def test_merchant_rejects_proposal(mock_llm, base_state):
+@patch("app.agents.merchant.nodes.append_negotiation_message", new_callable=AsyncMock)
+async def test_merchant_rejects_proposal(mock_append, mock_llm, base_state, graph_config):
     mock_llm.invoke.return_value = MerchantAgentAction(
         action=MerchantActionType.REJECT_PROPOSAL,
         reason="No thanks"
     )
     
     graph = build_merchant_agent_graph()
-    result = graph.invoke(base_state)
+    result = await graph.ainvoke(base_state, config=graph_config)
     
     assert result["current_action"].action == MerchantActionType.REJECT_PROPOSAL
     assert result["policy_decision"] is None  # Should not reach policy check
+    
+    mock_append.assert_called_once()
 
 
-def test_merchant_counter_offer_blocked_by_policy(mock_llm, base_state):
+async def test_merchant_counter_offer_blocked_by_policy(mock_llm, base_state, graph_config):
     # Mock LLM to Counter BELOW minimum price
     # The policy should DENY and trigger a recovery loop
     mock_llm.invoke.return_value = MerchantAgentAction(
@@ -109,7 +130,7 @@ def test_merchant_counter_offer_blocked_by_policy(mock_llm, base_state):
     
     graph = build_merchant_agent_graph()
     # Let's set recursion limit to prevent infinite loops if something goes wrong
-    result = graph.invoke(base_state, config={"recursion_limit": 25})
+    result = await graph.ainvoke(base_state, config={"recursion_limit": 25, **graph_config})
     
     # After 3 failed revisions, it should hit the error
     assert result["status"] == "failed"
@@ -117,7 +138,8 @@ def test_merchant_counter_offer_blocked_by_policy(mock_llm, base_state):
     assert result["proposal_revisions"] == 3
 
 
-def test_merchant_counter_offer_allowed_by_policy(mock_llm, base_state):
+@patch("app.agents.merchant.nodes.append_negotiation_message", new_callable=AsyncMock)
+async def test_merchant_counter_offer_allowed_by_policy(mock_append, mock_llm, base_state, graph_config):
     # Mock LLM to Counter ABOVE minimum price
     mock_llm.invoke.return_value = MerchantAgentAction(
         action=MerchantActionType.COUNTER_PROPOSAL,
@@ -128,14 +150,17 @@ def test_merchant_counter_offer_allowed_by_policy(mock_llm, base_state):
     )
     
     graph = build_merchant_agent_graph()
-    result = graph.invoke(base_state)
+    result = await graph.ainvoke(base_state, config=graph_config)
     
     assert result["current_action"].action == MerchantActionType.COUNTER_PROPOSAL
     assert result["policy_decision"] == PolicyDecision.ALLOW.value
     assert result["deterministic_total"] == Decimal("1050000.00")
+    
+    mock_append.assert_called_once()
 
 
-def test_merchant_requires_human_approval(mock_llm, base_intent, base_state):
+@patch("app.agents.merchant.nodes.create_approval_request", new_callable=AsyncMock)
+async def test_merchant_requires_human_approval(mock_create_approval, mock_llm, base_intent, base_state, graph_config):
     # Make autonomous limit small
     base_intent.policy_maximum_autonomous_transaction = Decimal("5000.0")
     
@@ -148,7 +173,9 @@ def test_merchant_requires_human_approval(mock_llm, base_intent, base_state):
     )
     
     graph = build_merchant_agent_graph()
-    result = graph.invoke(base_state)
+    result = await graph.ainvoke(base_state, config=graph_config)
     
     assert result["policy_decision"] == PolicyDecision.HUMAN_APPROVAL_REQUIRED.value
-    assert result.get("status") != "failed" # Awaiting human approval
+    assert result.get("status") == "completed"
+    
+    mock_create_approval.assert_called_once()
