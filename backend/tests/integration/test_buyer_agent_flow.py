@@ -80,7 +80,7 @@ async def test_full_buyer_agent_flow_to_proposal(db_session: AsyncSession, setup
     # 2. Second run: Agent selects product
     mock_action_select = BuyerAgentAction(
         action=ActionType.SELECT_PRODUCT,
-        product_id=test_product.id,
+        product_id=str(test_product.id),
         reason="This product matches."
     )
     
@@ -93,16 +93,15 @@ async def test_full_buyer_agent_flow_to_proposal(db_session: AsyncSession, setup
     )
 
     with patch("app.agents.buyer.nodes.get_llm") as mock_get_llm:
-        mock_llm = MagicMock()
-        mock_with_structured = AsyncMock()
-        mock_get_llm.return_value.with_structured_output.return_value = mock_with_structured
+        mock_buyer_llm = MagicMock()
         
         # Ainvoke will be called 3 times in the graph loop
-        mock_with_structured.ainvoke.side_effect = [
+        mock_buyer_llm.ainvoke = AsyncMock(side_effect=[
             mock_action_search,
             mock_action_select,
             mock_action_propose
-        ]
+        ])
+        mock_get_llm.return_value.with_structured_output.return_value = mock_buyer_llm
         
         final_state = await run_buyer_agent(db_session, intent)
         

@@ -18,6 +18,10 @@ RULES:
 6. A counter proposal is just a proposal; deterministic systems calculate the final total.
 7. If the proposal is commercially sound and within policy, you may ACCEPT. However, if this is Round 1, you should ALWAYS try to COUNTER_PROPOSAL with a slightly higher price to maximize profit, even if they meet the minimum.
 8. If the buyer is unreasonable or you reach the maximum rounds, you may REJECT.
+
+DEMO NEGOTIATION STRATEGY:
+- Do NOT accept a proposal immediately on the first round unless absolutely necessary.
+- Try to COUNTER_PROPOSAL a few times to get a higher price. Gradually lower your counteroffer towards the buyer's proposal until you reach a commercially acceptable middle ground.
 """
 
 HUMAN_CONTEXT = """

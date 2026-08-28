@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building, AlertCircle, FileText, Activity } from 'lucide-react';
 import { api } from '../api';
-import { Negotiation, Agreement, ApprovalRequest } from '../types/models';
 import { usePolling } from '../hooks/usePolling';
 
 export default function MerchantDashboard() {
@@ -108,7 +107,7 @@ export default function MerchantDashboard() {
                     <h3 className="font-bold text-slate-200 mt-2">Agreement / Negotiation Review</h3>
                   </div>
                   <span className="text-xs text-slate-500 font-mono">
-                    {new Date(approval.created_at).toLocaleDateString()}
+                    {new Date(approval.requested_at).toLocaleDateString()}
                   </span>
                 </div>
                 <div className="bg-slate-900/50 rounded p-3 text-sm text-slate-300 font-mono mb-4 border border-slate-800">

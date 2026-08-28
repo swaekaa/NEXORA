@@ -61,6 +61,8 @@ class Settings(BaseSettings):
     MAX_NEGOTIATION_ROUNDS: int = 10
     NEGOTIATION_TIMEOUT_MINUTES: int = 30
     MAX_TOOL_RETRIES: int = 3
+    NEGOTIATION_DEMO_MIN_ROUNDS: int = 3  # Force minimum 3 rounds for realism in demo
+
 
     # ── Inventory (Phase 8) ───────────────────────────────────────────────────
     INVENTORY_RESERVATION_TTL_MINUTES: int = 15

@@ -14,45 +14,21 @@ from app.policies.enums import ActionType as PolicyActionType
 
 async def policy_check_node(state: BuyerAgentState, config: RunnableConfig) -> dict:
     """
-    Evaluates the deterministic proposal against the Merchant Policy using the pure PolicyEngine.
+    Evaluates the deterministic proposal.
+    In Phase 14 (Multi-Round Demo), the Buyer Agent no longer uses the Merchant's PolicyEngine
+    to evaluate its outbound proposals. Doing so prematurely blocked lowball offers.
+    Instead, it relies entirely on the BuyerConstraintEngine (evaluated in validate_proposal_node).
     """
-    if state.get("policy_decision") == "deny":
-        # Already failed buyer constraints
+    if state.get("policy_decision") == "DENY":
+        # Already failed buyer constraints in validate_proposal_node
         return {}
         
     action = state["current_action"]
     
-    # Construct request
-    product_id = state.get("selected_product_id") or getattr(action, "product_id", None)
-    req = PolicyEvaluationRequest(
-        action=PolicyActionType.CREATE_AGREEMENT,
-        merchant_id=state["intent"].merchant_id,
-        product_id=product_id,
-        quantity=state["intent"].quantity,
-        unit_price=Decimal(action.proposed_unit_price).quantize(Decimal("0.01")),
-        discount_percent=Decimal(action.proposed_discount_percent or "0").quantize(Decimal("0.01")),
-        total_amount=state["deterministic_total"],
-        currency=state["intent"].preferred_currency
-    )
-    
-    # Construct context from config (injected by runner)
-    policy_context_data = config["configurable"].get("policy_context")
-    if not policy_context_data:
-        # Fallback if no policy context is provided
-        return {"policy_decision": "allow", "policy_reasons": []}
-        
-    ctx = PolicyEvaluationContext(**policy_context_data)
-    
-    # Execute pure function
-    engine = PolicyEngine()
-    result = engine.evaluate(req, ctx)
-    
-    # Extract reasons if any
-    reasons = [c.rule_name for c in result.checks if not c.passed]
-    
+    # If the BuyerConstraintEngine allowed it (or wasn't triggered), we allow it.
     return {
-        "policy_decision": result.decision.value,
-        "policy_reasons": reasons
+        "policy_decision": "allow",
+        "policy_reasons": []
     }
 
 
@@ -64,10 +40,12 @@ def route_policy_decision(state: BuyerAgentState) -> str:
     action = state["current_action"]
     if action.action == ActionType.STOP:
         return "END"
-    elif action.action not in (ActionType.PROPOSE_AGREEMENT, ActionType.COUNTER_PROPOSAL):
+    elif action.action not in (ActionType.PROPOSE_AGREEMENT, ActionType.COUNTER_PROPOSAL, ActionType.ACCEPT_COUNTER):
         return "run_llm"
         
     decision = state.get("policy_decision")
+    if decision:
+        decision = decision.lower()
     
     if decision in ["allow", "human_approval_required"]:
         return "submit_proposal"

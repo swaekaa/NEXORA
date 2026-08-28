@@ -241,6 +241,26 @@ async def validate_proposal_node(state: BuyerAgentState, config: RunnableConfig)
     action = state["current_action"]
     intent = state["intent"]
     
+    # ---------------------------------------------------------
+    # DEMO NEGOTIATION STRATEGY: Enforce minimum rounds
+    # ---------------------------------------------------------
+    from app.config import settings
+    logger.error(f"DEBUG_BUYER: action={action.action}, current_round={state.get('negotiation_round', 1)}, MIN_ROUNDS={settings.NEGOTIATION_DEMO_MIN_ROUNDS}")
+    if action.action == ActionType.ACCEPT_COUNTER:
+        current_round = state.get("negotiation_round", 1)
+        if current_round < settings.NEGOTIATION_DEMO_MIN_ROUNDS:
+            logger.error("DEBUG_BUYER: DENYING ACCEPT_COUNTER due to demo strategy")
+            return {
+                "policy_decision": "DENY",
+                "policy_reasons": [
+                    f"Demo Strategy Active: You attempted to ACCEPT_COUNTER on round {current_round}. "
+                    f"The minimum required rounds is {settings.NEGOTIATION_DEMO_MIN_ROUNDS}. "
+                    "You MUST generate a COUNTER_PROPOSAL instead to continue the negotiation."
+                ]
+            }
+        logger.error("DEBUG_BUYER: ALLOWING ACCEPT_COUNTER")
+        return {} # Safe to pass through, no numeric validation needed for accepting
+        
     try:
         if action.proposed_unit_price is None:
             raise ValueError("Unit price is required.")
@@ -256,7 +276,10 @@ async def validate_proposal_node(state: BuyerAgentState, config: RunnableConfig)
         constraint_engine = BuyerConstraintEngine()
         result = constraint_engine.evaluate_proposal(intent, unit_price, qty)
         
+        logger.error(f"DEBUG_BUYER: Constraint result={result.passed}, reasons={result.reasons}, total={total}, budget={intent.maximum_budget}")
+        
         if not result.passed:
+            logger.error(f"DEBUG_BUYER: DENYING due to constraints: {result.reasons}")
             return {
                 "policy_decision": "DENY", 
                 "policy_reasons": result.reasons
@@ -267,7 +290,7 @@ async def validate_proposal_node(state: BuyerAgentState, config: RunnableConfig)
             "policy_decision": "DENY", 
             "policy_reasons": [f"Deterministic validation failed: Invalid numeric formats. {str(e)}"]
         }
-        
+            
     return {"deterministic_total": total}
 
 
@@ -372,7 +395,8 @@ async def read_negotiation_state_node(state: BuyerAgentState, config: RunnableCo
             return {
                 "selected_product_id": product_id,
                 "merchant_counter": latest.payload,
-                "negotiation_status": latest.message_type
+                "negotiation_status": latest.message_type,
+                "negotiation_round": neg.round_count if neg else 0
             }
             
         return {"selected_product_id": product_id}

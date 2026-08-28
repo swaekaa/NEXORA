@@ -51,10 +51,8 @@ def create_buyer_agent_graph() -> StateGraph:
             return "END"
             
         action = state["current_action"]
-        if action.action in ["PROPOSE_AGREEMENT", "COUNTER_PROPOSAL"]:
+        if action.action in ["PROPOSE_AGREEMENT", "COUNTER_PROPOSAL", "ACCEPT_COUNTER"]:
             return "validate_proposal"
-        elif action.action == "ACCEPT_COUNTER":
-            return "submit_proposal"
             
         # Otherwise, go back to LLM to take next action (like searching)
         return "run_llm"

@@ -68,8 +68,7 @@ export default function NegotiationDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6 relative">
           <div className="absolute left-6 top-8 bottom-8 w-px bg-slate-800" />
-          
-          {messages.map((msg, idx) => {
+          {messages.map((msg) => {
             const isBuyer = msg.sender_type === 'buyer_agent';
             const isSystem = msg.sender_type === 'system';
             

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileCheck, CreditCard, Lock } from 'lucide-react';
 import { api } from '../api';
@@ -23,7 +23,7 @@ export default function AgreementDetail() {
     if (!agreement) return;
     setPaymentInitiating(true);
     try {
-      const res = await api.payments.initiate(agreement.id);
+      await api.payments.initiate(agreement.id);
       
       // Simulate Razorpay popup success for MVP
       setTimeout(() => {

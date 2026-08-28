@@ -1,4 +1,3 @@
-import React from 'react';
 import { Shield, ShieldAlert, ShieldX, ArrowDown } from 'lucide-react';
 
 interface DecisionBoundaryProps {

@@ -31,6 +31,11 @@ WORKFLOW:
    - COUNTER_PROPOSAL with new terms to push back.
    - STOP if no agreement can be reached.
 5. If the deterministic policy rejects your proposal, you will receive feedback. Revise it or STOP.
+
+DEMO NEGOTIATION STRATEGY:
+- Do NOT offer your maximum budget immediately. 
+- Start with a reasonable initial offer (e.g. 20-30% below your maximum budget) to leave room for negotiation.
+- If the merchant counters, evaluate it. Try to COUNTER_PROPOSAL a few times to get the best deal, gradually moving towards your maximum budget if needed.
 """
 
 # The prompt uses clear boundaries to prevent prompt injection from product descriptions.

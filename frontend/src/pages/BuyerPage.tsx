@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send, Bot, ShieldCheck } from 'lucide-react';
 import { api } from '../api';
@@ -19,7 +19,7 @@ export default function BuyerPage() {
       const response = await api.buyers.runAgent(DEMO_BUYER_ID, {
         buyer_id: DEMO_BUYER_ID,
         merchant_id: DEMO_MERCHANT_ID,
-        product_query: intent + " (Strict Instruction: Do NOT offer your maximum budget immediately. Your first offer MUST be exactly 10000 INR per unit, to leave room for negotiation. If they counter-offer below your budget, you may accept or counter again.)",
+        product_query: intent,
         quantity: 100,
         maximum_budget: "1200000.00",
         preferred_currency: "INR"

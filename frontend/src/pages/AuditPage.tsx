@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ShieldCheck, Activity, Search, Filter, Server, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ShieldCheck, Search, Filter, Server, User } from 'lucide-react';
 import { api } from '../api';
 import { AuditEvent } from '../types/models';
 

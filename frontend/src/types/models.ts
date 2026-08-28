@@ -26,6 +26,7 @@ export interface Negotiation {
   product_id: string;
   state: 'OFFER' | 'COUNTER_OFFER' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
   round_count: number;
+  max_rounds: number;
   created_at: string;
   updated_at: string;
 }

@@ -2,48 +2,48 @@
 
 This plan details the changes required to upgrade the single-round acceptance flow into a rich, multi-round negotiation, preserving all deterministic boundaries.
 
-## Architectural Audit & Root Cause Analysis
+## Architectural Audit & Root Cause Analysis (13-Point Report)
 
-1. **Why the current Merchant accepts immediately:** The Buyer's initial offer was artificially constrained to always be at or above the Merchant's minimum price. When the Merchant LLM receives an offer that already meets all criteria, its prompt tells it to ACCEPT.
-2. **Why the current Buyer accepts/reaches the final proposal quickly:** The Buyer Agent's `policy_node.py` was improperly invoking the global `PolicyEngine` (which applies Merchant rules, such as `minimum_unit_price`) to validate the Buyer's *own* outbound proposal. When the Buyer tried to offer a low-ball price (e.g., 9,000), it was deterministically blocked by the Merchant's rules before the Merchant even saw it. The Buyer LLM hit `MAX_PROPOSAL_REVISIONS_EXCEEDED` and crashed.
-3. **Where orchestration currently terminates:** The orchestrator loop currently terminates correctly when the state reaches `ACCEPTED`, `REJECTED`, or `EXPIRED`. It correctly toggles between `OFFER` and `COUNTER_OFFER`.
-4. **Existing components for reuse:** We will reuse `NegotiationService` for message persistence, `PolicyEngine` (within the Merchant's graph), `BuyerConstraintEngine` (within the Buyer's graph), and the existing LangGraph loops.
-5. **Deterministic safety boundaries:** 
-   - The **Buyer** will only be constrained by the `BuyerConstraintEngine` (budget limit).
-   - The **Merchant LLM** will be allowed to evaluate the Buyer's low-ball offer. If the Merchant LLM mistakenly tries to ACCEPT a price below the floor, the Merchant's own `policy_node.py` (which correctly uses `PolicyEngine`) will deterministically DENY the LLM's action and force it to revise.
-   - Human approval limits remain perfectly intact within the Merchant's policy node.
+1. **Current Buyer graph**: `backend/app/agents/buyer/graph.py` routes `run_llm` -> `execute_action` -> `validate_proposal` (invokes `BuyerConstraintEngine`) -> `policy_check` (improperly invokes Merchant `PolicyEngine`) -> `submit_proposal`.
+2. **Current Merchant graph**: `backend/app/agents/merchant/graph.py` routes `run_llm` -> `validate_action` -> `policy_check` (invokes `PolicyEngine`) -> `submit_decision` or `request_approval`.
+3. **Current orchestrator**: `backend/app/services/orchestrator.py` loops up to 20 times, checking `negotiation.state`. If `OFFER`, triggers Merchant. If `COUNTER_OFFER`, triggers Buyer. Breaks on terminal states.
+4. **Current round-counting mechanism**: `NegotiationService.append_negotiation_message` increments `round_count` exclusively when the Buyer sends a subsequent `COUNTER_OFFER` (meaning a full back-and-forth exchange constitutes a round).
+5. **Current acceptance routing**: The Merchant LLM chooses `ACCEPT_PROPOSAL`, routing to `policy_check` (which validates the accepted price against Merchant policy), then routes to `submit_decision` (which writes to the DB) and AgreementService.
+6. **Current PolicyEngine invocation points**: Invoked in both `BuyerAgent` (`policy_node.py`) and `MerchantAgent` (`policy_node.py`).
+7. **Current BuyerConstraintEngine invocation points**: Invoked exclusively in `BuyerAgent` (`nodes.py -> validate_proposal_node`).
+8. **Current NegotiationService persistence calls**: Used cleanly inside `buyer/nodes.py` (`submit_proposal_node`) and `merchant/nodes.py` (`submit_decision_node`). No raw DB writes exist for messages.
+9. **Current frontend polling behavior**: `usePolling` fetches the DB state every 2 seconds. It correctly stops polling when the `stopCondition` is met (`ACCEPTED`, `REJECTED`, `EXPIRED`). It only performs `GET` requests; agent execution is distinct (`POST /agent/runs`).
+10. **Exact cause of immediate acceptance**: The Buyer was previously forced to offer exactly the Merchant's minimum price to bypass the improper `PolicyEngine` check inside the Buyer's own graph. Since the offer satisfied all Merchant conditions, the Merchant LLM logically accepted it on Round 1.
+11. **Exact files requiring changes**: 
+    - `backend/app/agents/buyer/policy_node.py` (Remove `PolicyEngine`)
+    - `backend/app/agents/buyer/prompts.py` (Add Demo Strategy)
+    - `backend/app/agents/merchant/prompts.py` (Add Demo Strategy)
+    - `backend/app/agents/merchant/policy_node.py` or `nodes.py` (Enforce Demo Strategy deterministic bounds)
+    - `backend/app/services/orchestrator.py` (Add structured logging)
+    - `backend/tests/integration/test_multi_round_negotiation.py` (New tests)
+12. **How I will guarantee 3+ genuine rounds without fake messages**: I will introduce a deterministic demo negotiation rule: `DEMO_MIN_ROUNDS = 3`. If the Merchant LLM generates `ACCEPT_PROPOSAL` before `round >= 3`, the Merchant's deterministic layer will intercept the action and send feedback back to the LLM: "Demo Strategy requires a COUNTER_PROPOSAL for the first 3 rounds. Generate a realistic counteroffer instead." The LLM will then generate a real counteroffer, which will be validated and persisted natively.
+13. **How I will preserve all existing safety boundaries**: The Merchant's `policy_check_node` will still run `PolicyEngine.evaluate()`. If a generated counteroffer or an eventual acceptance violates the mathematical rules (e.g. `unit_price < minimum_price`), it will be deterministically `DENIED`. Human approval limits will still trigger `HUMAN_APPROVAL_REQUIRED`. No dummy data will be injected into `NegotiationService`.
 
-## Proposed Changes
+## Proposed Execution Plan
 
-### 1. Decouple Merchant Policy from Buyer Graph
-- **[MODIFY]** `backend/app/agents/buyer/policy_node.py`
-  - Remove the `PolicyEngine` evaluation. The Buyer should only evaluate `BuyerConstraintEngine` (which is already done in `validate_proposal_node`).
-  - The `policy_check_node` will simply check if `policy_decision` was already set to `DENY` by the `BuyerConstraintEngine` and route accordingly.
+### 1. Fix Buyer Policy Leakage
+- **[MODIFY]** `backend/app/agents/buyer/policy_node.py`: Remove the `PolicyEngine` evaluation. The Buyer should only evaluate `BuyerConstraintEngine`.
 
-### 2. Negotiation Strategy Prompts
-- **[MODIFY]** `backend/app/agents/buyer/prompts.py`
-  - Add explicit "Demo Mode" instruction: *Start bidding at least 20% below your maximum budget to leave room for negotiation. Counter-offer gradually.*
-- **[MODIFY]** `backend/app/agents/merchant/prompts.py`
-  - Add explicit "Demo Mode" instruction: *Even if the buyer's proposal is above your minimum price, always try to COUNTER_PROPOSAL with a higher price on Round 1 and Round 2 to maximize profit. Accept only when they reach a commercially sound peak.*
+### 2. Introduce Deterministic Demo Strategy
+- **[MODIFY]** `backend/app/agents/merchant/nodes.py` & `backend/app/agents/buyer/nodes.py`: Intercept early `ACCEPT_PROPOSAL` or `ACCEPT_COUNTER` actions when `round < 3`. Return a deterministic prompt feedback forcing the LLM to counteroffer instead.
 
-### 3. Orchestrator Logging
-- **[MODIFY]** `backend/app/services/orchestrator.py`
-  - Add explicit structured logs for `NEGOTIATION_TURN_STARTED`, `BUYER_AGENT_TRIGGERED`, `MERCHANT_AGENT_TRIGGERED`, and `NEGOTIATION_TERMINAL`.
+### 3. Update Prompts for Negotiation Realism
+- **[MODIFY]** `backend/app/agents/buyer/prompts.py`: Instruct the Buyer to start below its maximum budget.
+- **[MODIFY]** `backend/app/agents/merchant/prompts.py`: Instruct the Merchant to negotiate gradually.
 
-### 4. Buyer UI Setup
-- **[MODIFY]** `frontend/src/pages/BuyerPage.tsx`
-  - Reset the `maximum_budget` to a realistic ceiling (e.g. `1200000.00`) and the default query placeholder to encourage the LLM to negotiate.
+### 4. Upgrade Orchestrator Logging
+- **[MODIFY]** `backend/app/services/orchestrator.py`: Add structured logging for each turn (`NEGOTIATION_TURN_STARTED`, `POLICY_CHECK_COMPLETED`, etc.)
 
-### 5. Integration Tests
-- **[NEW]** `backend/tests/integration/test_multi_round_negotiation.py`
-  - Test 1: Counteroffer flow (alternating messages, round count > 1)
-  - Test 2: Merchant deterministic recovery if it accidentally accepts a lowball offer
-  - Test 3: Final acceptance to Agreement
+### 5. Integration Testing
+- **[NEW]** `backend/tests/integration/test_multi_round_negotiation.py`: Add the 8 required deterministic tests (Counteroffer flow, early acceptance interception, policy override, human approval, max rounds, DB truth).
 
 ## Verification Plan
-1. Run `pytest -q` to ensure baseline (246+ tests) passes.
-2. Run the new `test_multi_round_negotiation.py`.
-3. Launch the full application, initiate a negotiation from the Buyer Console, and visually confirm the multi-round ping-pong in the frontend timeline.
+1. `pytest -q` to ensure the baseline passes.
+2. Run the new multi-round tests.
+3. Launch the UI and manually confirm the multi-round ping-pong timeline.
 
-## User Review Required
-Does this plan perfectly capture the "LLMs propose, Deterministic systems decide" architecture you envisioned for the demo?
