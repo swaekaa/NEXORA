@@ -1,129 +1,142 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Send, Bot, ShieldCheck } from 'lucide-react';
-import { api } from '../api';
 
-export default function BuyerPage() {
-  const [intent, setIntent] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
-  
-  // For MVP demo, hardcode a buyer_id that exists in the seeded DB
-  const DEMO_BUYER_ID = "123e4567-e89b-12d3-a456-426614174000";
-  const DEMO_MERCHANT_ID = "987f6543-e21b-34c5-b678-426614174999";
-
-  const handleStartNegotiation = async () => {
-    if (!intent) return;
-    setIsLoading(true);
-    try {
-      const response = await api.buyers.runAgent(DEMO_BUYER_ID, {
-        buyer_id: DEMO_BUYER_ID,
-        merchant_id: DEMO_MERCHANT_ID,
-        product_query: intent,
-        quantity: 100,
-        maximum_budget: "1200000.00",
-        preferred_currency: "INR"
-      });
-      console.log('Agent run initiated:', response);
-      if (response.negotiation_id) {
-        navigate(`/negotiations/${response.negotiation_id}`);
-      } else if (response.status === 'failed') {
-        alert(`Agent failed: ${response.error_reason}`);
-      } else {
-        alert(`Agent stopped without proposing. Status: ${response.status}`);
-      }
-    } catch (error: any) {
-      console.error('Failed to run agent', error);
-      alert(`Failed to initiate negotiation:\n${error.message || error}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+export default function AgentsPage() {
+  const [selectedAgent, setSelectedAgent] = useState<'buyer' | 'merchant' | null>(null);
 
   return (
-    <div className="max-w-4xl mx-auto animate-fade-in-up">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Buyer Console</h1>
-          <p className="text-slate-400">Initiate autonomous procurement requests.</p>
+    <div className="w-full h-full pt-20 px-8 relative">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-12 text-center">
+          <h1 className="text-4xl font-bold tracking-widest text-slate-200 mb-2">AGENT ROSTER</h1>
+          <p className="text-slate-500 uppercase tracking-widest text-sm">3 ACTIVE UNITS DEPLOYED</p>
         </div>
-        <div className="glass-panel px-4 py-2 flex items-center gap-3">
-          <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] animate-pulse" />
-          <span className="text-sm font-medium text-blue-100">BUYER AGENT ONLINE</span>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Buyer Agent Card */}
+          <div 
+            className="pixel-panel cursor-pointer hover:-translate-y-1 transition-transform border-blue-500/50"
+            onClick={() => setSelectedAgent('buyer')}
+          >
+            <div className="bg-blue-500/10 p-6 flex flex-col items-center">
+              <div className="w-24 h-24 bg-blue-500 mb-4 flex items-center justify-center border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(0,0,0,0.5)]">
+                <div className="w-16 h-16 bg-red-200 relative">
+                   <div className="absolute top-4 left-2 w-3 h-3 bg-slate-900"></div>
+                   <div className="absolute top-4 right-2 w-3 h-3 bg-slate-900"></div>
+                </div>
+              </div>
+              <h2 className="text-2xl font-bold text-blue-400 mb-1">ALEX</h2>
+              <p className="text-blue-500/70 text-xs font-bold tracking-widest uppercase">Buyer Agent - Analytical</p>
+            </div>
+            <div className="p-4 border-t-2 border-slate-700 bg-slate-900 text-slate-400 text-xs flex justify-between">
+              <span>92 XP</span>
+              <span className="text-emerald-400">● ONLINE</span>
+            </div>
+          </div>
+
+          {/* Merchant Agent Card */}
+          <div 
+            className="pixel-panel cursor-pointer hover:-translate-y-1 transition-transform border-orange-500/50"
+            onClick={() => setSelectedAgent('merchant')}
+          >
+            <div className="bg-orange-500/10 p-6 flex flex-col items-center">
+              <div className="w-24 h-24 bg-orange-500 mb-4 flex items-center justify-center border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(0,0,0,0.5)]">
+                <div className="w-16 h-16 bg-red-200 relative">
+                   <div className="absolute top-4 left-3 w-3 h-3 bg-slate-900"></div>
+                   <div className="absolute top-4 right-3 w-3 h-3 bg-slate-900"></div>
+                </div>
+              </div>
+              <h2 className="text-2xl font-bold text-orange-400 mb-1">MORGAN</h2>
+              <p className="text-orange-500/70 text-xs font-bold tracking-widest uppercase">Merchant Agent - Strategic</p>
+            </div>
+            <div className="p-4 border-t-2 border-slate-700 bg-slate-900 text-slate-400 text-xs flex justify-between">
+              <span>85 XP</span>
+              <span className="text-emerald-400">● ONLINE</span>
+            </div>
+          </div>
+
+          {/* Policy Engine Card */}
+          <div className="pixel-panel border-emerald-500/50 opacity-80">
+            <div className="bg-emerald-500/10 p-6 flex flex-col items-center">
+              <div className="w-24 h-24 bg-slate-700 mb-4 flex items-center justify-center border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(0,0,0,0.5)]">
+                 <div className="w-12 h-12 bg-slate-800 flex items-center justify-center">
+                    <div className="w-4 h-4 bg-emerald-500 rounded-full animate-blink"></div>
+                 </div>
+              </div>
+              <h2 className="text-2xl font-bold text-emerald-400 mb-1">NEXORA CORE</h2>
+              <p className="text-emerald-500/70 text-xs font-bold tracking-widest uppercase">Policy Engine - Deterministic</p>
+            </div>
+            <div className="p-4 border-t-2 border-slate-700 bg-slate-900 text-slate-400 text-xs flex justify-between">
+              <span>SYSTEM</span>
+              <span className="text-emerald-400">● ACTIVE</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Input Panel */}
-          <div className="glass-panel p-6">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <Bot className="text-blue-400" size={20} />
-              Procurement Request
-            </h2>
-            <textarea
-              value={intent}
-              onChange={(e) => setIntent(e.target.value)}
-              className="w-full h-32 bg-slate-900/50 border border-slate-700 rounded-lg p-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all resize-none"
-              placeholder="E.g., I need 100 Dell monitors. My absolute max budget is ₹12 lakh, but try to get them for as cheap as possible. Don't accept the first list price!"
-            />
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={handleStartNegotiation}
-                disabled={isLoading || !intent}
-                className="glass-button-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+      {/* Agent Inspector Modal */}
+      {selectedAgent && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="pixel-panel w-full max-w-md animate-fade-in-up border-slate-500">
+            <div className="pixel-panel-header bg-slate-800">
+              <span>UNIT 0{selectedAgent === 'buyer' ? '1' : '2'} / {selectedAgent.toUpperCase()}</span>
+              <button 
+                onClick={() => setSelectedAgent(null)}
+                className="text-slate-500 hover:text-white"
               >
-                {isLoading ? (
-                  <div className="w-4 h-4 border-2 border-blue-200 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Send size={16} />
-                )}
-                Start Negotiation
+                [X]
+              </button>
+            </div>
+            <div className="p-8">
+              <div className="flex gap-6 mb-8">
+                <div className={`w-24 h-24 ${selectedAgent === 'buyer' ? 'bg-blue-500' : 'bg-orange-500'} flex-shrink-0 flex items-center justify-center border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(0,0,0,0.5)]`}>
+                  <div className="w-16 h-16 bg-red-200 relative">
+                     <div className="absolute top-4 left-3 w-3 h-3 bg-slate-900"></div>
+                     <div className="absolute top-4 right-3 w-3 h-3 bg-slate-900"></div>
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold text-white mb-1">
+                    {selectedAgent === 'buyer' ? 'ALEX' : 'MORGAN'}
+                  </h2>
+                  <p className="text-slate-400 text-xs tracking-widest uppercase mb-4">
+                    {selectedAgent === 'buyer' ? 'Procurement Agent' : 'Sales Agent'}
+                  </p>
+                  <div className="inline-flex items-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-900/30 px-2 py-1 border border-emerald-800">
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                    ONLINE & READY
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 font-mono text-sm">
+                <div className="flex justify-between border-b border-slate-800 pb-2">
+                  <span className="text-slate-500">CONFIDENCE</span>
+                  <span className="text-emerald-400">92%</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-800 pb-2">
+                  <span className="text-slate-500">CURRENT STATE</span>
+                  <span className="text-blue-400">IDLE</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-800 pb-2">
+                  <span className="text-slate-500">NEGOTIATIONS</span>
+                  <span className="text-white">24</span>
+                </div>
+                <div className="flex justify-between pb-2">
+                  <span className="text-slate-500">POLICY CONNECTION</span>
+                  <span className="text-emerald-400">✓ ACTIVE</span>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setSelectedAgent(null)}
+                className="w-full mt-8 pixel-button bg-slate-800 border-slate-600"
+              >
+                RETURN TO ROSTER
               </button>
             </div>
           </div>
-          
-          {/* Demo Notice */}
-          <div className="glass-panel p-6 border-dashed border-slate-700/50 bg-transparent">
-            <h3 className="text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
-              <ShieldCheck size={16} className="text-emerald-400" />
-              Deterministic Execution
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              When you submit a request, the Buyer Agent will autonomously interact with the Merchant Agent. 
-              NEXORA's Policy Engine mathematically enforces all limits before any agreement is generated.
-            </p>
-          </div>
         </div>
-        
-        {/* Sidebar Activity */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="glass-panel p-6 h-full">
-            <h2 className="text-lg font-semibold text-white mb-6">Agent Activity</h2>
-            
-            {isLoading ? (
-              <div className="space-y-4">
-                <div className="flex items-start gap-3 text-sm text-slate-400">
-                  <div className="w-5 h-5 rounded-full border border-blue-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" />
-                  </div>
-                  <p>Parsing procurement intent...</p>
-                </div>
-                <div className="flex items-start gap-3 text-sm text-slate-500">
-                  <div className="w-5 h-5 rounded-full border border-slate-700 flex items-center justify-center flex-shrink-0 mt-0.5" />
-                  <p>Searching merchant catalog</p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-48 text-center opacity-50">
-                <Bot size={32} className="mb-3 text-slate-500" />
-                <p className="text-sm text-slate-400">Agent is standing by.</p>
-                <p className="text-xs text-slate-500 mt-1">Submit a request to begin.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
