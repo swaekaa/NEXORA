@@ -33,6 +33,13 @@ async def get_agreement(session: AsyncSession, agreement_id: uuid.UUID) -> Agree
     return result.scalar_one_or_none()
 
 
+async def get_agreements_by_merchant(session: AsyncSession, merchant_id: uuid.UUID) -> list[Agreement]:
+    result = await session.execute(
+        select(Agreement).where(Agreement.merchant_id == merchant_id).order_by(Agreement.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
 async def create_agreement_from_negotiation(
     session: AsyncSession,
     negotiation_id: uuid.UUID

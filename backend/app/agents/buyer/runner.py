@@ -78,6 +78,10 @@ async def run_buyer_agent(session: AsyncSession, intent: BuyerIntent) -> BuyerAg
         metadata={"action": "INTENT_RECEIVED", "run_id": initial_state["run_id"]}
     )
     
+    # Commit the transaction so the DB connection is returned to the pool
+    # before we start the potentially long-running LangGraph execution.
+    await session.commit()
+    
     # 4. Compile and Run the Graph
     graph = create_buyer_agent_graph()
     

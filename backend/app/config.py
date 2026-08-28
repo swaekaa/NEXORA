@@ -47,7 +47,9 @@ class Settings(BaseSettings):
     RAZORPAY_WEBHOOK_SECRET: str = ""
 
     # ── LLM (Phase 5+) ────────────────────────────────────────────────────────
-    LLM_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-3.7-flash"  # Verified stable structured output model
+    LLM_API_KEY: str = "" # Fallback for backward compatibility
 
     # ── CORS ──────────────────────────────────────────────────────────────────
     CORS_ORIGINS: list[str] = [

@@ -5,13 +5,18 @@ Deterministic functions that execute the LangGraph state machine.
 Enforces the "LLMs PROPOSE. DETERMINISTIC SYSTEMS DECIDE." principle.
 """
 import uuid
+import time
+import asyncio
+import logging
 from decimal import Decimal, InvalidOperation
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
-from app.agents.buyer.config import get_llm
+from app.llm import get_llm
 from app.agents.buyer.prompts import SYSTEM_INSTRUCTION
 from app.agents.buyer.schemas import ActionType, BuyerAgentAction, BuyerAgentState
 from app.agents.buyer.constraints import BuyerConstraintEngine
@@ -34,8 +39,12 @@ def format_state_for_llm(state: BuyerAgentState) -> list:
     # Safely format product catalog for context
     catalog_text = "Available Products:\n"
     if not state["candidate_products"]:
-        catalog_text += "No products discovered yet. Take SEARCH_PRODUCTS action to search the catalog.\n"
+        if state.get("step_count", 0) > 0:
+            catalog_text += "No products were found matching your query! You MUST take the STOP action since there is nothing to buy.\n"
+        else:
+            catalog_text += "No products discovered yet. Take SEARCH_PRODUCTS action to search the catalog.\n"
     else:
+        catalog_text += "CRITICAL INSTRUCTION: Products HAVE been found! You MUST now take the SELECT_PRODUCT action to choose one of the IDs below.\n"
         for p in state["candidate_products"]:
             catalog_text += f"- ID: {p.get('id')} | Name: {p.get('name')} | Price: {p.get('price')} | SKU: {p.get('sku')} | Desc: {p.get('description')}\n"
     
@@ -78,36 +87,92 @@ def format_state_for_llm(state: BuyerAgentState) -> list:
         f"Action: What will you do next? (Must respond with valid JSON matching BuyerAgentAction)"
     )
     
-    return [
-        SystemMessage(content=SYSTEM_INSTRUCTION),
-        HumanMessage(content=human_msg)
-    ]
+    msgs = [SystemMessage(content=SYSTEM_INSTRUCTION)]
+    # Append conversation history so the LLM remembers its past actions
+    msgs.extend(state.get("messages", []))
+    # Always append the current state as the FINAL HumanMessage to ensure valid Gemini turn order
+    msgs.append(HumanMessage(content=human_msg))
+    
+    return msgs
 
 
 async def run_llm_node(state: BuyerAgentState, config: RunnableConfig) -> dict:
     """Invokes the LLM to get the next BuyerAgentAction."""
     if state["step_count"] >= 15:
         return {"status": "failed", "error_reason": "MAX_AGENT_STEPS_EXCEEDED"}
+    
+    # We are about to make a slow network call. Let's commit any pending transactions.
+    session = config["configurable"]["session"]
+    await session.commit()
         
     messages = format_state_for_llm(state)
     llm = get_llm().with_structured_output(BuyerAgentAction)
     
-    try:
-        action: BuyerAgentAction = await llm.ainvoke(messages)
-    except Exception as e:
-        return {"status": "failed", "error_reason": f"LLM Error: {str(e)}"}
+    action = None
+    
+    logger.info(f"buyer_agent_llm_started | run_id={state.get('run_id')} | message_count={len(messages)}")
+    start_time = time.time()
+    
+    last_error = None
+    
+    for attempt in range(3):
+        attempt_start = time.time()
+        try:
+            action = await llm.ainvoke(messages)
+            attempt_elapsed = time.time() - attempt_start
+            
+            logger.info(f"buyer_agent_llm_attempt_finished | run_id={state.get('run_id')} | attempt={attempt+1} | duration={attempt_elapsed:.2f}s")
+            
+            if action is not None:
+                logger.info(f"buyer_agent_llm_chose_action | run_id={state.get('run_id')} | action={action.action} | product_id={action.product_id}")
+                break
+            
+            # If the model fails to use the tool, add a strong reminder
+            messages.append(HumanMessage(content="You failed to output the structured JSON. You MUST respond ONLY by calling the provided tool schema for BuyerAgentAction."))
+        except Exception as e:
+            last_error = e
+            attempt_elapsed = time.time() - attempt_start
+            logger.warning(f"buyer_agent_llm_attempt_failed | run_id={state.get('run_id')} | attempt={attempt+1} | duration={attempt_elapsed:.2f}s | error={e}")
+            await asyncio.sleep(1) # Backoff before retry
         
+    total_elapsed = time.time() - start_time
+    logger.info(f"buyer_agent_llm_completed | run_id={state.get('run_id')} | total_duration={total_elapsed:.2f}s")
+        
+    if action is None:
+        if last_error:
+            logger.error(f"buyer_agent_llm_failed | run_id={state.get('run_id')} | total_duration={total_elapsed:.2f}s | error={last_error}")
+            error_str = str(last_error).lower()
+            if "timeout" in error_str or "deadline" in error_str or "504" in error_str:
+                error_reason = "LLM_TIMEOUT"
+            elif "404" in error_str or "not found" in error_str or "unavailable" in error_str:
+                error_reason = "LLM_MODEL_UNAVAILABLE"
+            else:
+                error_reason = f"LLM Error: {str(last_error)}"
+            return {"status": "failed", "error_reason": error_reason}
+            
+        return {"status": "failed", "error_reason": "LLM repeatedly failed to return structured output."}
+        
+    import json
+    from langchain_core.messages import AIMessage
+    
+    # Save the chosen action to history so the LLM remembers it next time
+    ai_msg = AIMessage(content=f"I took action: {action.action.value} with args: {json.dumps(action.model_dump())}")
+    
     return {
         "current_action": action,
         "step_count": state["step_count"] + 1,
         "policy_decision": None,  # Reset feedback on new action
-        "policy_reasons": []
+        "policy_reasons": [],
+        "messages": [ai_msg]
     }
 
 
 async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) -> dict:
     """Executes the action chosen by the LLM."""
-    action = state["current_action"]
+    if state.get("status") == "failed":
+        return {}  # Do not overwrite the error reason from the previous node
+        
+    action = state.get("current_action")
     if not action:
         return {"status": "failed", "error_reason": "No action provided"}
         
@@ -115,6 +180,16 @@ async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) ->
         return {"status": "completed"}
         
     elif action.action == ActionType.SEARCH_PRODUCTS:
+        logger.info(f"execute_action | run_id={state.get('run_id')} | action=SEARCH_PRODUCTS")
+        
+        # Deterministic loop prevention: do not allow searching again if products are already found
+        if state.get("candidate_products"):
+            logger.warning(f"execute_action | run_id={state.get('run_id')} | Redundant SEARCH_PRODUCTS intercepted.")
+            return {
+                "policy_decision": "DENY", 
+                "policy_reasons": ["You already discovered products. You MUST choose one using the SELECT_PRODUCT action."]
+            }
+            
         # Actually hit the database via the tool (which uses ProductService)
         query = action.search_query or state["intent"].product_query
         try:
@@ -123,11 +198,14 @@ async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) ->
                 {"merchant_id": str(state["intent"].merchant_id), "query": query},
                 config=config
             )
-            return {"candidate_products": results}
+            from langchain_core.messages import HumanMessage
+            tool_msg = HumanMessage(content=f"Search executed. Found {len(results)} products.")
+            return {"candidate_products": results, "messages": [tool_msg]}
         except Exception as e:
             return {"policy_decision": "deny", "policy_reasons": [f"Search failed: {str(e)}"]}
         
     elif action.action == ActionType.SELECT_PRODUCT:
+        logger.info(f"execute_action | run_id={state.get('run_id')} | action=SELECT_PRODUCT | id={action.product_id}")
         if not action.product_id:
             return {"policy_decision": "deny", "policy_reasons": ["product_id is required for SELECT_PRODUCT"]}
         
@@ -145,6 +223,8 @@ async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) ->
             merchant_id=state["intent"].merchant_id,
             metadata={"product_selected": str(action.product_id)}
         )
+        # Commit immediately so the transaction doesn't stay open if graph loops back to run_llm
+        await session.commit()
         return {"selected_product_id": action.product_id}
         
     elif action.action in (ActionType.PROPOSE_AGREEMENT, ActionType.COUNTER_PROPOSAL):

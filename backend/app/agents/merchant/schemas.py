@@ -49,7 +49,6 @@ class MerchantActionType(str, Enum):
     REJECT_PROPOSAL = "REJECT_PROPOSAL"
     COUNTER_PROPOSAL = "COUNTER_PROPOSAL"
     REQUEST_HUMAN_APPROVAL = "REQUEST_HUMAN_APPROVAL"
-    STOP = "STOP"
 
 
 class MerchantAgentAction(BaseModel):

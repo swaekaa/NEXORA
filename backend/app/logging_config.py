@@ -56,7 +56,7 @@ def configure_logging(level: str = "INFO") -> None:
     """
     numeric_level = getattr(logging, level.upper(), logging.INFO)
 
-    formatter = _SafeFormatter(datefmt="%Y-%m-%dT%H:%M:%S")
+    formatter = _SafeFormatter(fmt="%(asctime)s", datefmt="%Y-%m-%dT%H:%M:%S")
 
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(formatter)

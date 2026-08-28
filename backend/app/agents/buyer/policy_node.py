@@ -69,10 +69,8 @@ def route_policy_decision(state: BuyerAgentState) -> str:
         
     decision = state.get("policy_decision")
     
-    if decision == "allow":
+    if decision in ["allow", "human_approval_required"]:
         return "submit_proposal"
-    elif decision == "human_approval_required":
-        return "await_human_approval"
     elif decision == "deny":
         return "proposal_recovery"
         

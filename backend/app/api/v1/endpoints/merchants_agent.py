@@ -40,6 +40,12 @@ async def create_agent_run(
             detail=f"Agent execution failed: {str(e)}"
         )
         
+    if final_state.get("status") == "failed":
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"LLM_MODEL_UNAVAILABLE or execution error: {final_state.get('error_reason', 'Unknown error')}"
+        )
+        
     return RunMerchantAgentResponse(
         run_id=final_state.get("run_id"),
         status=final_state.get("status", "failed"),

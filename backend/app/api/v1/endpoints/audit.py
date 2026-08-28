@@ -2,7 +2,7 @@ from typing import Any
 import uuid
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connection import get_db
@@ -19,7 +19,7 @@ class AuditEventResponse(BaseModel):
     agreement_id: uuid.UUID | None
     negotiation_id: uuid.UUID | None
     merchant_id: uuid.UUID | None
-    metadata_: dict[str, Any] | None
+    metadata_: dict[str, Any] | None = Field(None, serialization_alias="metadata")
     created_at: Any
 
     class Config:

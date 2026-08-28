@@ -81,7 +81,8 @@ def counter_offer_recovery_node(state: MerchantAgentState) -> dict:
     feedback = f"Your last action was DENIED by the Policy Engine for the following reasons:\n" + "\n".join(reasons)
     feedback += "\nYou MUST revise your counter-offer to comply with the merchant's policy, or REJECT the proposal."
     
-    msg = SystemMessage(content=feedback)
+    from langchain_core.messages import HumanMessage
+    msg = HumanMessage(content=feedback)
     
     return {
         "proposal_revisions": revisions + 1,

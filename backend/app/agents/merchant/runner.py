@@ -26,19 +26,27 @@ async def run_merchant_agent(session: AsyncSession, negotiation_id: uuid.UUID) -
     """
     Executes the merchant agent workflow for a given negotiation.
     """
+    import time
+    logger.info(f"MERCHANT_RUNNER_ENTERED | negotiation_id={negotiation_id}")
+    logger.info(f"MERCHANT_RUNNER_LOADING_NEGOTIATION | negotiation_id={negotiation_id}")
     # 1. Load Negotiation
     negotiation = await get_negotiation(session, negotiation_id)
     if not negotiation:
         return {"status": "failed", "error_reason": "Negotiation not found"}
         
     if negotiation.state in NegotiationState.TERMINAL_STATES:
+        logger.error(f"MERCHANT_AGENT_FAILED | negotiation_id={negotiation_id} | exception_type=StateError | exception_message=Terminal state {negotiation.state}")
         return {"status": "failed", "error_reason": f"Negotiation is in terminal state: {negotiation.state}"}
         
+    logger.info(f"MERCHANT_RUNNER_NEGOTIATION_LOADED | negotiation_id={negotiation_id}")
+    logger.info(f"MERCHANT_RUNNER_LOADING_MESSAGES | negotiation_id={negotiation_id}")
     # 2. Load Messages
     messages = await get_negotiation_messages(session, negotiation_id)
     if not messages:
+        logger.error(f"MERCHANT_AGENT_FAILED | negotiation_id={negotiation_id} | exception_type=MessageError | exception_message=No messages")
         return {"status": "failed", "error_reason": "No messages in negotiation"}
         
+    logger.info(f"MERCHANT_RUNNER_MESSAGES_LOADED | negotiation_id={negotiation_id} | message_count={len(messages)}")
     latest_message = messages[-1]
     
     # Merchant Agent only runs when it's the Buyer's turn that just finished
@@ -111,10 +119,20 @@ async def run_merchant_agent(session: AsyncSession, negotiation_id: uuid.UUID) -
     
     graph = build_merchant_agent_graph()
     
+    # Commit the transaction to release the DB connection before long-running graph
+    await session.commit()
+    
+    logger.info(f"MERCHANT_RUNNER_INVOKING_GRAPH | negotiation_id={negotiation_id}")
+    start_time = time.time()
     try:
         final_state = await graph.ainvoke(initial_state, config=config)
+        duration = time.time() - start_time
+        logger.info(f"MERCHANT_RUNNER_GRAPH_RETURNED | negotiation_id={negotiation_id} | duration={duration:.2f}s")
+        logger.info(f"MERCHANT_RUNNER_EXITED | negotiation_id={negotiation_id}")
         return final_state
     except Exception as e:
+        duration = time.time() - start_time
+        logger.error(f"MERCHANT_AGENT_FAILED | negotiation_id={negotiation_id} | exception_type={type(e).__name__} | exception_message={str(e)} | duration={duration:.2f}s")
         logger.error(f"Merchant Agent Graph execution failed: {e}", exc_info=True)
         initial_state["status"] = "failed"
         initial_state["error_reason"] = f"Graph Crash: {str(e)}"

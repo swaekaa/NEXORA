@@ -11,6 +11,8 @@ from pydantic import BaseModel
 from app.database.connection import get_db
 from app.agents.buyer.schemas import BuyerIntent, BuyerAgentState
 from app.agents.buyer.runner import run_buyer_agent
+from app.services.orchestrator import run_negotiation_loop
+from fastapi import BackgroundTasks
 
 
 router = APIRouter(prefix="/buyers", tags=["Buyers Agent"])
@@ -28,6 +30,7 @@ class RunAgentResponse(BaseModel):
 async def create_agent_run(
     buyer_id: uuid.UUID,
     intent: BuyerIntent,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db)
 ) -> Any:
     """
@@ -48,10 +51,21 @@ async def create_agent_run(
             detail=f"Agent execution failed: {str(e)}"
         )
         
+    if final_state.get("status") == "failed":
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"LLM_MODEL_UNAVAILABLE or execution error: {final_state.get('error_reason', 'Unknown error')}"
+        )
+        
+    negotiation_id = final_state.get("negotiation_id")
+    if negotiation_id and final_state.get("status") != "failed":
+        # Launch the orchestration loop to automatically continue the negotiation
+        background_tasks.add_task(run_negotiation_loop, negotiation_id, intent)
+        
     return RunAgentResponse(
         run_id=final_state["run_id"],
         status=final_state["status"],
         error_reason=final_state["error_reason"],
-        negotiation_id=final_state.get("negotiation_id"),
+        negotiation_id=negotiation_id,
         step_count=final_state["step_count"]
     )

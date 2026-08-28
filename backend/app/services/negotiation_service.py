@@ -55,6 +55,13 @@ async def get_negotiation_messages(session: AsyncSession, negotiation_id: uuid.U
     return list(result.scalars().all())
 
 
+async def get_negotiations_by_merchant(session: AsyncSession, merchant_id: uuid.UUID) -> list[Negotiation]:
+    result = await session.execute(
+        select(Negotiation).where(Negotiation.merchant_id == merchant_id).order_by(Negotiation.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
 async def create_negotiation_with_proposal(
     session: AsyncSession,
     buyer_id: uuid.UUID,
@@ -107,6 +114,10 @@ async def append_negotiation_message(
     """
     Atomically appends a new message to a negotiation and updates the round count/state if necessary.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"MERCHANT_MESSAGE_APPEND_STARTED | negotiation_id={negotiation_id} | message_type={message_type.value}")
+
     negotiation = await get_negotiation(session, negotiation_id)
     if not negotiation:
         raise ValueError(f"Negotiation {negotiation_id} not found.")
@@ -181,6 +192,7 @@ async def append_negotiation_message(
     await session.commit()
     await session.refresh(message)
     
+    logger.info(f"MERCHANT_MESSAGE_APPEND_COMPLETED | negotiation_id={negotiation_id} | message_id={message.id}")
     return message
 
 

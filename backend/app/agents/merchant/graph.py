@@ -20,20 +20,20 @@ def route_after_llm(state: MerchantAgentState) -> Literal["validate_action", "co
     if not action:
         return "completed" # Should not happen unless failed
     
-    if action.action == MerchantActionType.STOP:
-        return "completed"
-        
     # REJECT_PROPOSAL goes to validate_action so it can be routed to policy_check/submit_decision
     return "validate_action"
 
 
-def route_after_validation(state: MerchantAgentState) -> Literal["policy_check", "submit_decision", "failed"]:
+def route_after_validation(state: MerchantAgentState) -> Literal["policy_check", "submit_decision", "request_approval", "failed"]:
     if state["status"] == "failed":
         return "failed"
     
     action = state.get("current_action")
     if action and action.action == MerchantActionType.REJECT_PROPOSAL:
         return "submit_decision"
+        
+    if action and action.action == MerchantActionType.REQUEST_HUMAN_APPROVAL:
+        return "request_approval"
         
     return "policy_check"
 
@@ -91,6 +91,7 @@ def build_merchant_agent_graph() -> StateGraph:
         {
             "policy_check": "policy_check",
             "submit_decision": "submit_decision",
+            "request_approval": "request_approval",
             "failed": END
         }
     )

@@ -47,7 +47,7 @@ class BuyerAgentAction(BaseModel):
     
     # Optional fields depending on the action
     search_query: str | None = None
-    product_id: uuid.UUID | None = None
+    product_id: str | None = None
     
     # Proposal fields (raw strings from LLM to avoid JSON-float issues, will be deterministically parsed)
     proposed_unit_price: str | None = None

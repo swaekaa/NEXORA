@@ -1,4 +1,10 @@
-/* NEXORA — Frontend placeholder
- * Full React/Vite/TypeScript frontend to be implemented in Phase 13
- * See docs/IMPLEMENTATION_PLAN.md Phase 13 for complete specification
- */
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
