@@ -84,18 +84,26 @@ NEXORA answers all of these.
 | Phase 4 | Policy Engine | ✅ Complete |
 | Phase 5 | Buyer Agent | ✅ Complete |
 | Phase 6 | Merchant Agent | ✅ Complete |
-| Phase 7 | Negotiation Engine | 🔜 Next |
-| Phase 8 | Agreement Engine | ⬜ Pending |
-| Phase 9 | Razorpay Integration | ⬜ Pending |
-| Phase 10 | Webhooks | ⬜ Pending |
-| Phase 11 | Audit Trail | ⬜ Pending |
-| Phase 12 | Human Approvals | ⬜ Pending |
-| Phase 13 | Frontend | ⬜ Pending |
-| Phase 14 | Failure Testing | ⬜ Pending |
+| Phase 7 | Negotiation Engine | ✅ Complete |
+| Phase 8 | Agreement Engine | ✅ Complete |
+| Phase 9 | Razorpay Integration | ✅ Complete |
+| Phase 10 | Webhooks | ✅ Complete |
+| Phase 11 | Audit Trail | ✅ Complete |
+| Phase 12 | Human Approvals | ✅ Complete |
+| Phase 13 | Frontend | ✅ Complete |
+| Phase 14 | Multi-Round Negotiation Demo | ✅ Complete |
 | Phase 15 | Deployment | ⬜ Pending |
 | Phase 16 | Demo Preparation | ⬜ Pending |
 
 ---
+
+## The Frontend & Multi-Round Negotiation
+
+NEXORA includes a polished React/Vite frontend that vividly demonstrates the Multi-Round Agent Negotiation:
+1. **Buyer Dashboard**: Allows a user to set an intent (budget, quantity, criteria). The Buyer Agent LangGraph runs, searches the catalog, and proposes an agreement.
+2. **Merchant Dashboard**: A command center to monitor all active negotiations, view completed agreements, and handle "HUMAN_APPROVAL_REQUIRED" overrides.
+3. **Live Negotiation View**: A real-time chat interface showing the multi-round back-and-forth between the Buyer and Merchant agents, enforcing a deterministic minimum 3-round negotiation before reaching an agreement.
+
 
 ## Quick Start
 
@@ -117,12 +125,15 @@ curl http://localhost:8000/health
 # {"status":"ok","service":"nexora-api","version":"0.1.0",...}
 ```
 
-### Option B — Local Development
+### Option B — Local Development (Backend + Frontend)
 
+**1. Start the Database**
 ```bash
-# Start PostgreSQL only
 docker compose up db -d
+```
 
+**2. Start the Backend**
+```bash
 cd backend
 python -m venv .venv
 .venv\Scripts\activate        # Windows
@@ -133,13 +144,24 @@ pip install -r requirements-dev.txt
 # Configure env
 cp ../.env.example ../.env
 # Update DATABASE_URL to use localhost:5432
+# Provide your GEMINI_API_KEY for the LangGraph models
 
-# Run migrations (creates alembic tracking table)
+# Run migrations and seed data
 alembic upgrade head
+python seed.py
 
-# Start server with hot-reload
+# Start server
 uvicorn app.main:app --reload
 ```
+
+**3. Start the Frontend**
+Open a new terminal window:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Visit `http://localhost:5173` to view the dashboards!
 
 ---
 
