@@ -4,61 +4,80 @@ export function createPolicyCore(container: PIXI.Container, x: number, y: number
   const g = new PIXI.Graphics();
   container.addChild(g);
 
-  // Server Rack Shadow
-  g.beginFill(0x000000, 0.2);
-  g.drawRect(x - 45, y - 10, 90, 80);
-  g.endFill();
-
-  // Server Rack Body
-  g.beginFill(0x2B2B2B); // Dark grey rack
-  g.lineStyle(2, 0x1A1A1A);
-  g.drawRect(x - 40, y - 50, 80, 100);
-  g.endFill();
-
-  // Server Slots (Servers)
-  g.lineStyle(1, 0x111111);
-  for(let i=0; i<4; i++) {
-    g.beginFill(0x3A3A3A);
-    g.drawRect(x - 30, y - 40 + (i * 12), 60, 8);
-    g.endFill();
+  // Helper for drawing a server rack
+  const drawRack = (rx: number, ry: number, isMain: boolean) => {
+    const width = isMain ? 60 : 40;
+    const height = isMain ? 120 : 100;
+    const yOffset = isMain ? -60 : -50;
     
-    // Server status lights (static idle lights)
-    g.lineStyle(0);
-    g.beginFill(0x5CB85C); // Green light
-    g.drawCircle(x + 20, y - 36 + (i * 12), 2);
-    g.beginFill(0x5BC0DE); // Blue blinker
-    g.drawCircle(x + 10, y - 36 + (i * 12), 2);
-    g.endFill();
-  }
+    // Shadow
+    g.beginFill(0x000000, 0.3); g.drawRect(rx - (width/2) - 5, ry + yOffset + 20, width + 10, height);
+    
+    // Rack Body
+    g.beginFill(0x222222); g.lineStyle(2, 0x111111);
+    g.drawRect(rx - (width/2), ry + yOffset, width, height);
+    
+    // Inner Rails
+    g.beginFill(0x333333); g.lineStyle(0);
+    g.drawRect(rx - (width/2) + 4, ry + yOffset + 4, 4, height - 8);
+    g.drawRect(rx + (width/2) - 8, ry + yOffset + 4, 4, height - 8);
 
-  // Large Monitor / Screen on top of rack
-  g.beginFill(0x1F2937); // Dark casing
-  g.lineStyle(2, 0x111111);
-  g.drawRect(x - 35, y + 10, 70, 30);
-  g.beginFill(0x064E3B); // Dark green screen
-  g.lineStyle(0);
-  g.drawRect(x - 32, y + 13, 64, 24);
+    // Blades/Servers
+    g.lineStyle(1, 0x111111);
+    const bladeCount = isMain ? 6 : 8;
+    for(let i=0; i<bladeCount; i++) {
+      g.beginFill(0x444444);
+      g.drawRect(rx - (width/2) + 8, ry + yOffset + 10 + (i * 12), width - 16, 8);
+      // Lights
+      g.lineStyle(0);
+      g.beginFill(0x5CB85C); // Green
+      g.drawRect(rx + (width/2) - 16, ry + yOffset + 12 + (i * 12), 2, 4);
+      g.beginFill(Math.random() > 0.5 ? 0x5BC0DE : 0xF0AD4E); // Blue or Orange
+      g.drawRect(rx + (width/2) - 20, ry + yOffset + 12 + (i * 12), 2, 4);
+      g.lineStyle(1, 0x111111);
+    }
+  };
+
+  // Draw 3 Racks
+  drawRack(x - 55, y, false); // Left Rack
+  drawRack(x + 55, y, false); // Right Rack
+  drawRack(x, y, true);       // Center Rack
+
+  // Center Terminal (Iris Display)
+  g.beginFill(0x1F2937); g.lineStyle(2, 0x111111);
+  g.drawRect(x - 30, y + 10, 60, 35);
+  g.beginFill(0x064E3B); g.lineStyle(0);
+  g.drawRect(x - 26, y + 14, 52, 27);
   g.endFill();
 
-  // Screen Text (POLICY CORE / STATUS)
-  const screenTitle = new PIXI.Text('POLICY CORE', new PIXI.TextStyle({ fontFamily: 'monospace', fontSize: 6, fill: '#34D399', fontWeight: 'bold' }));
-  screenTitle.x = x - 28;
-  screenTitle.y = y + 16;
-  container.addChild(screenTitle);
+  // Screen Scribbles
+  g.beginFill(0x34D399); g.lineStyle(0);
+  g.drawRect(x - 22, y + 18, 35, 3);
+  g.drawRect(x - 22, y + 28, 20, 2);
+  g.drawRect(x + 2, y + 28, 15, 2);
+  g.endFill();
 
-  const screenStatus = new PIXI.Text('STATUS: ONLINE', new PIXI.TextStyle({ fontFamily: 'monospace', fontSize: 5, fill: '#10B981' }));
-  screenStatus.x = x - 28;
-  screenStatus.y = y + 26;
-  container.addChild(screenStatus);
-
-  // Cables running from rack
+  // Cables running between racks
   g.lineStyle(2, 0x111111);
-  g.moveTo(x + 40, y + 20);
-  g.lineTo(x + 50, y + 20);
-  g.lineTo(x + 50, y + 40);
+  g.moveTo(x - 35, y - 40); g.lineTo(x - 20, y - 40); // Left to center
+  g.moveTo(x + 35, y - 30); g.lineTo(x + 20, y - 30); // Right to center
   
-  // A small fan vent
-  g.lineStyle(1, 0x111111);
-  g.moveTo(x - 20, y + 42); g.lineTo(x + 20, y + 42);
-  g.moveTo(x - 20, y + 45); g.lineTo(x + 20, y + 45);
+  // Large Wall Sign (POLICY CHECKLIST)
+  const signX = x + 90;
+  const signY = y - 80;
+  g.beginFill(0x222222); g.lineStyle(2, 0x111111);
+  g.drawRect(signX, signY, 110, 70);
+  
+  // Sign Scribbles
+  g.beginFill(0xFFFFFF); g.lineStyle(0);
+  g.drawRect(signX + 5, signY + 5, 40, 3);
+  g.drawRect(signX + 5, signY + 15, 60, 2);
+  g.beginFill(0x5CB85C);
+  // list items
+  for(let i = 0; i < 4; i++) {
+    const ly = signY + 30 + (i * 8);
+    g.drawRect(signX + 5, ly, 4, 3); // checkmark scribble
+    g.drawRect(signX + 15, ly + 1, 25 + Math.random() * 20, 2); // text line
+  }
+  g.endFill();
 }

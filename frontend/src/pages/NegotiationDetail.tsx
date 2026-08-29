@@ -8,10 +8,11 @@ import { NegotiationHUD } from '../components/hud/NegotiationHUD';
 import { ActivityLog } from '../components/hud/ActivityLog';
 import { api } from '../api';
 
-// We create a wrapper to use GameContext for the ActivityLog & Deal Popup
 const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode: boolean, simulationMode: 'setup' | 'live' | 'demo', children?: React.ReactNode }) => {
   const { state } = useGame();
   const activityLogRef = useRef<HTMLDivElement>(null);
+  const [logWidth, setLogWidth] = useState(288); // Default 72rem
+  const isDragging = useRef(false);
   
   useEffect(() => {
     if (activityLogRef.current) {
@@ -19,19 +20,42 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
     }
   }, [state.events]);
 
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      // Restrict width between 250px and 40% of the screen
+      const newWidth = Math.max(250, Math.min(e.clientX, window.innerWidth * 0.4));
+      setLogWidth(newWidth);
+    };
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = 'default';
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   // Find agreed deal event for the popup
   const agreedEvent = state.events.find(e => e.type === 'agreement_created');
 
   return (
-    <div className="w-full h-full overflow-hidden bg-[#EAE8DD] flex">
-      {/* Activity Log (Left Solid Panel) */}
-      <div className="w-72 h-full bg-[#FFFDF7] border-r-[3px] border-[#333333] flex flex-col z-20 shrink-0">
+    <div className="w-full h-full overflow-hidden bg-[#EAE8DD] relative">
+      
+      {/* Activity Log (Absolute Resizable Panel) */}
+      <div 
+        className="absolute top-0 left-0 h-full bg-[#FFFDF7] border-r-[3px] border-[#333333] flex flex-col z-40 shadow-[4px_0_0_0_rgba(51,51,51,1)]"
+        style={{ width: `${logWidth}px` }}
+      >
         <div className="p-4 border-b-[3px] border-[#333333] flex justify-between items-center bg-white/50">
-          <span className="font-bold text-[10px] uppercase tracking-widest text-[#888888]">
+          <span className="font-extrabold text-lg uppercase tracking-widest text-[#333333]">
             Activity Log {simulationMode === 'live' ? '(LIVE)' : simulationMode === 'demo' ? '(DEMO)' : ''}
           </span>
         </div>
-        <div ref={activityLogRef} className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-4 custom-scrollbar scroll-smooth">
+        <div ref={activityLogRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 font-mono text-xs space-y-4 custom-scrollbar scroll-smooth">
           {state.events.filter(e => e.message || e.offer).map((e, i) => (
              <div key={i} className="flex flex-col gap-1 border-l-2 pl-3 py-1" style={{ borderLeftColor: e.agent === 'buyer' ? '#5BC0DE' : '#D9534F' }}>
                <div className="flex items-center gap-2">
@@ -45,10 +69,18 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
           ))}
           {state.events.length === 0 && <div className="text-[#888888] italic">Waiting for negotiation...</div>}
         </div>
+        
+        {/* Drag Handle */}
+        <div 
+          className="absolute top-0 -right-2 w-4 h-full cursor-col-resize z-50 flex items-center justify-center group"
+          onMouseDown={(e) => { e.preventDefault(); isDragging.current = true; document.body.style.cursor = 'col-resize'; }}
+        >
+           <div className="w-1 h-16 bg-[#333333] rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
+        </div>
       </div>
 
-      {/* Office Area (Right Panel) */}
-      <div className="flex-1 relative h-full bg-[#EAE8DD]">
+      {/* Office Area (Full Width, never resizes) */}
+      <div className="w-full h-full relative bg-[#EAE8DD]">
         
         {/* Pixel Canvas Background */}
         <div className="absolute inset-0 z-0">
@@ -59,7 +91,7 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
         <div className="absolute inset-0 pointer-events-none z-10">
           <NegotiationHUD />
           {!setupMode && (
-             <div className="absolute top-4 left-4 text-[#888888] font-bold tracking-widest text-[10px] uppercase bg-white/50 px-2 py-1 border-[2px] border-[#333333] pointer-events-auto shadow-[2px_2px_0_0_rgba(51,51,51,1)]">
+             <div className="absolute top-4 left-4 text-[#888888] font-bold tracking-widest text-sm uppercase bg-white/50 px-3 py-2 border-[2px] border-[#333333] pointer-events-auto shadow-[2px_2px_0_0_rgba(51,51,51,1)]">
                NEXORA // DEAL FLOOR
              </div>
           )}
@@ -316,7 +348,7 @@ function BottomSection({ startDemo, simulationMode }: { startDemo: () => void, s
   return (
     <div className="h-[500px] shrink-0 relative border-[3px] border-[#333333] bg-[#EAE8DD] shadow-[4px_4px_0_0_rgba(51,51,51,1)] overflow-hidden flex flex-col">
       <div className="p-4 border-b-[3px] border-[#333333] flex justify-between items-center bg-white/50 z-10 pointer-events-none">
-        <span className="font-bold text-[10px] uppercase tracking-widest text-[#888888]">
+        <span className="font-extrabold text-lg uppercase tracking-widest text-[#333333]">
           NEGOTIATION TIMELINE GRAPH // ROUND {state.roundCount}
         </span>
         {simulationMode === 'setup' && (

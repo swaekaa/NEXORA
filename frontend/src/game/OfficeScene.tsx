@@ -77,24 +77,52 @@ export const OfficeScene: React.FC = () => {
     const tx = LAYOUT.MEETING_TABLE.x;
     const ty = LAYOUT.MEETING_TABLE.y;
     
-    // Shadow
-    tableG.beginFill(0x000000, 0.2);
+    // Table Shadow
+    tableG.beginFill(0x000000, 0.25);
     tableG.drawRect(tx - 110, ty - 10, 220, 60);
     tableG.endFill();
     
+    // Pushed-in Chairs (Backside, bottom edge of table)
+    const drawTableChair = (cx: number) => {
+      tableG.beginFill(0x2F4F4F); tableG.lineStyle(2, 0x111111);
+      tableG.drawRect(cx - 15, ty + 25, 30, 20); // seat
+      tableG.drawRect(cx - 15, ty + 15, 30, 10); // backrest
+      tableG.drawRect(cx - 18, ty + 20, 3, 15); // left arm
+      tableG.drawRect(cx + 15, ty + 20, 3, 15); // right arm
+    };
+    drawTableChair(tx - 40);
+    drawTableChair(tx + 40);
+
     // Main Table Body (Rich Mahogany)
     tableG.beginFill(0x5C3A21);
     tableG.lineStyle(2, 0x111111);
     tableG.drawRect(tx - 100, ty - 35, 200, 70);
     tableG.endFill();
     
-    // Center Plant
-    tableG.beginFill(0x8B4513); tableG.drawRect(tx - 10, ty - 10, 20, 15);
-    tableG.beginFill(0x228B22); tableG.lineStyle(1, 0x006400); tableG.drawCircle(tx, ty - 20, 15); tableG.endFill();
+    // Center Plant (Moved slightly up to keep animation path clear)
+    tableG.beginFill(0x8B4513); tableG.lineStyle(1, 0x111111); tableG.drawRect(tx - 8, ty - 25, 16, 12); 
+    tableG.beginFill(0x228B22); tableG.lineStyle(1, 0x006400); tableG.drawCircle(tx, ty - 30, 12); tableG.endFill();
     
     // Papers/Documents on table
-    tableG.beginFill(0xFFFFFF); tableG.lineStyle(1, 0x333333); tableG.drawRect(tx - 70, ty - 20, 20, 30); tableG.endFill();
-    tableG.beginFill(0xFFFFFF); tableG.lineStyle(1, 0x333333); tableG.drawRect(tx + 50, ty - 20, 20, 30); tableG.endFill();
+    tableG.beginFill(0xFFFFFF); tableG.lineStyle(1, 0x333333); 
+    tableG.drawRect(tx - 70, ty - 20, 20, 25); // buyer side doc
+    tableG.drawRect(tx + 50, ty - 20, 20, 25); // merchant side doc
+    
+    // Central Contract Folder (Open)
+    tableG.beginFill(0xD2B48C); tableG.lineStyle(1, 0x8B4513);
+    tableG.drawRect(tx - 25, ty - 5, 50, 30); // folder
+    tableG.beginFill(0xFFFFFF); tableG.lineStyle(1, 0x333333);
+    tableG.drawRect(tx - 22, ty - 2, 20, 24); // left page
+    tableG.drawRect(tx + 2, ty - 2, 20, 24); // right page
+    tableG.beginFill(0x555555); tableG.lineStyle(0);
+    tableG.drawRect(tx - 20, ty + 2, 16, 2); tableG.drawRect(tx - 20, ty + 6, 10, 2); // text
+    tableG.drawRect(tx + 4, ty + 2, 16, 2); tableG.drawRect(tx + 4, ty + 6, 14, 2); // text
+    tableG.endFill();
+
+    // Coffee Mugs
+    tableG.beginFill(0xFFFFFF); tableG.lineStyle(1, 0x333333); tableG.drawCircle(tx - 40, ty - 10, 4);
+    tableG.beginFill(0x111111); tableG.lineStyle(1, 0x333333); tableG.drawCircle(tx + 35, ty + 10, 4);
+    tableG.endFill();
 
     // ==========================================
     // STAGE 6: POLICY CORE
@@ -252,9 +280,12 @@ export const OfficeScene: React.FC = () => {
       const s = stateRef.current;
       frame++;
       
-      // Center the game world in the dynamically sized app screen
-      gameWorld.x = Math.floor((app.screen.width - LAYOUT.OFFICE_WIDTH) / 2);
-      gameWorld.y = Math.floor((app.screen.height - LAYOUT.OFFICE_HEIGHT) / 2);
+      // Scale and center the game world
+      // Offset by 150px to the right to visually center it in the remaining space (compensating for the 300px left panel)
+      const scaleFactor = 1.25;
+      gameWorld.scale.set(scaleFactor);
+      gameWorld.x = Math.floor((app.screen.width - LAYOUT.OFFICE_WIDTH * scaleFactor) / 2) + 150;
+      gameWorld.y = Math.floor((app.screen.height - LAYOUT.OFFICE_HEIGHT * scaleFactor) / 2);
 
       // Idle Animations (Subtle bobbing)
       const bIdleOffset = (s.buyerState === 'idle') ? Math.sin(frame * 0.05) * 2 : 0;

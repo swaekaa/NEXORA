@@ -23,11 +23,11 @@ export const PixelSpeechBubble: React.FC<PixelSpeechBubbleProps> = ({ agent, mes
   const isBuyer = agent === 'buyer';
   
   // The canvas game world is strictly centered in the screen.
-  // Logical center is 600x300. Buyer is at 550, Merchant is at 650. Target Y is 420.
+  // At 1.25x scale: 50 * 1.25 = 62px. 120 * 1.25 = 150px.
   const style: React.CSSProperties = {
     position: 'absolute',
-    left: isBuyer ? 'calc(50% - 50px)' : 'calc(50% + 50px)',
-    top: 'calc(50% + 120px)',
+    left: isBuyer ? 'calc(50% - 62px)' : 'calc(50% + 62px)',
+    top: 'calc(50% + 150px)',
     transform: 'translate(-50%, 0)', // Position BELOW the anchor point
     zIndex: 20,
     width: '450px', // Much wider to fit all text without scrolling
