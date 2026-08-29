@@ -31,13 +31,14 @@ async def search_products(merchant_id: str, query: str, config: RunnableConfig) 
     # Query database safely via service
     products = await list_products(session, m_id)
     
-    query = query.lower()
+    query_words = [w.strip() for w in query.lower().replace('-', ' ').split() if w.strip()]
     results = []
     for p in products:
         name = p.name.lower()
         desc = (p.description or "").lower()
         
-        if query in name or query in desc or not query:
+        # Match if no query, or if ANY word from the query is in the name or description
+        if not query_words or any(w in name or w in desc for w in query_words):
             # Return bounded DTOs, omitting internal database details
             results.append({
                 "id": str(p.id),
