@@ -8,6 +8,7 @@ import { drawWorkstation } from './environment/Workstations';
 import { createPolicyCore } from './environment/PolicyCoreVisuals';
 import { createDecorations } from './environment/Decorations';
 import { createLighting } from './environment/Lighting';
+import { PixelSpeechBubble } from '../components/PixelSpeechBubble';
 
 export const OfficeScene: React.FC = () => {
   const { state } = useGame();
@@ -25,8 +26,7 @@ export const OfficeScene: React.FC = () => {
 
     // Initialize raw Pixi Application
     const app = new PIXI.Application({
-      width: LAYOUT.OFFICE_WIDTH,
-      height: LAYOUT.OFFICE_HEIGHT,
+      resizeTo: canvasRef.current,
       backgroundColor: 0xEAE8DD,
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
@@ -35,33 +35,35 @@ export const OfficeScene: React.FC = () => {
     
     // Add canvas to DOM
     const canvas = app.view as HTMLCanvasElement;
-    
-    // Make the canvas responsive to fill the parent while maintaining aspect ratio
     canvas.style.width = '100%';
     canvas.style.height = '100%';
-    canvas.style.objectFit = 'contain';
+    canvas.style.display = 'block';
     canvas.style.imageRendering = 'pixelated';
     
     canvasRef.current.appendChild(canvas);
     appRef.current = app;
 
+    // The main container that holds the entire 1200x600 logical scene
+    const gameWorld = new PIXI.Container();
+    app.stage.addChild(gameWorld);
+
     // ==========================================
     // STAGE 2 & 7: ENVIRONMENT (Bottom layer)
     // ==========================================
     const envContainer = createFloorAndWalls(LAYOUT.OFFICE_WIDTH, LAYOUT.OFFICE_HEIGHT);
-    app.stage.addChild(envContainer);
+    gameWorld.addChild(envContainer);
     
     const decContainer = createDecorations(LAYOUT.OFFICE_WIDTH, LAYOUT.OFFICE_HEIGHT);
-    app.stage.addChild(decContainer);
+    gameWorld.addChild(decContainer);
 
     // ==========================================
     // STAGE 3 & 4: WORKSTATIONS
     // ==========================================
     const stationsG = new PIXI.Graphics();
-    app.stage.addChild(stationsG);
+    gameWorld.addChild(stationsG);
     
     const stationsContainer = new PIXI.Container();
-    app.stage.addChild(stationsContainer);
+    gameWorld.addChild(stationsContainer);
     
     drawWorkstation(stationsG, stationsContainer, LAYOUT.BUYER_DESK.x, LAYOUT.BUYER_DESK.y, true);
     drawWorkstation(stationsG, stationsContainer, LAYOUT.MERCHANT_DESK.x, LAYOUT.MERCHANT_DESK.y, false);
@@ -70,7 +72,7 @@ export const OfficeScene: React.FC = () => {
     // STAGE 5: NEGOTIATION TABLE
     // ==========================================
     const tableG = new PIXI.Graphics();
-    app.stage.addChild(tableG);
+    gameWorld.addChild(tableG);
     
     const tx = LAYOUT.MEETING_TABLE.x;
     const ty = LAYOUT.MEETING_TABLE.y;
@@ -98,7 +100,7 @@ export const OfficeScene: React.FC = () => {
     // STAGE 6: POLICY CORE
     // ==========================================
     const policyContainer = new PIXI.Container();
-    app.stage.addChild(policyContainer);
+    gameWorld.addChild(policyContainer);
     createPolicyCore(policyContainer, LAYOUT.POLICY_ENGINE.x, LAYOUT.POLICY_ENGINE.y);
     
     // Policy Core Status Light Graphic (Updated dynamically)
@@ -110,8 +112,8 @@ export const OfficeScene: React.FC = () => {
     // ==========================================
     const buyerContainer = new PIXI.Container();
     const merchantContainer = new PIXI.Container();
-    app.stage.addChild(buyerContainer);
-    app.stage.addChild(merchantContainer);
+    gameWorld.addChild(buyerContainer);
+    gameWorld.addChild(merchantContainer);
     
     const buyerG = new PIXI.Graphics();
     buyerContainer.addChild(buyerG);
@@ -125,19 +127,94 @@ export const OfficeScene: React.FC = () => {
 
     // Dialogues moved to HTML DOM for crisp text rendering
 
-    const renderAgent = (g: PIXI.Graphics, color: number) => {
+    const renderAgent = (g: PIXI.Graphics, color: number, isBuyer: boolean) => {
       g.clear();
-      g.beginFill(0x000000, 0.15); g.lineStyle(0); g.drawEllipse(0, 35, 20, 8); g.endFill(); // shadow
-      g.beginFill(color); g.lineStyle(2, 0x111111); g.drawRect(-15, -15, 30, 30); g.endFill(); // body
-      g.beginFill(0xF5DEB3); g.lineStyle(2, 0x111111); g.drawRect(-10, -35, 20, 20); g.endFill(); // head
-      g.beginFill(0x111111); g.lineStyle(0); g.drawRect(-4, -28, 3, 3); g.drawRect(4, -28, 3, 3); g.endFill(); // eyes
-      g.beginFill(0x222222); g.lineStyle(2, 0x111111); g.drawRect(-25, 20, 50, 16); g.endFill(); // plate
+      // Chair shadow (blocky)
+      g.beginFill(0x000000, 0.2); g.lineStyle(0); g.drawRect(-22, 32, 44, 12); g.endFill();
+      
+      // Chair backrest (dark grey/black)
+      g.beginFill(0x222222); g.lineStyle(2, 0x111111);
+      g.drawRect(-18, -10, 36, 40);
+      g.endFill();
+      
+      // Arms (resting on desk or chair arms)
+      g.beginFill(color); g.lineStyle(2, 0x111111);
+      g.drawRect(-22, 5, 8, 16); // Left arm
+      g.drawRect(14, 5, 8, 16); // Right arm
+      g.endFill();
+
+      // Hands (blocky)
+      g.beginFill(0xF5DEB3); g.lineStyle(1, 0x111111);
+      g.drawRect(-20, 20, 4, 4); // Left hand
+      g.drawRect(16, 20, 4, 4); // Right hand
+      g.endFill();
+
+      // Body / Suit (shirt + tie for merchant, casual jacket for buyer)
+      g.beginFill(color); g.lineStyle(2, 0x111111);
+      g.drawRect(-14, -10, 28, 30); 
+      g.endFill();
+      
+      // Shirt inner V
+      g.beginFill(0xFFFFFF); g.lineStyle(0);
+      g.drawPolygon([-6, -10, 6, -10, 0, 5]);
+      g.endFill();
+
+      if (!isBuyer) {
+        // Red tie for Merchant
+        g.beginFill(0xD9534F); g.lineStyle(1, 0x111111);
+        g.drawPolygon([-2, -8, 2, -8, 0, 4]);
+        g.endFill();
+      } else {
+        // Lanyard for Buyer
+        g.beginFill(0x333333);
+        g.drawRect(-5, -10, 2, 12);
+        g.drawRect(3, -10, 2, 12);
+        g.beginFill(0x5BC0DE); g.lineStyle(1, 0x111111);
+        g.drawRect(-3, 2, 6, 8);
+        g.endFill();
+      }
+
+      // Head
+      g.beginFill(0xF5DEB3); g.lineStyle(2, 0x111111);
+      g.drawRect(-10, -32, 20, 22);
+      g.endFill();
+
+      // Hair
+      g.beginFill(isBuyer ? 0x8B4513 : 0x2F4F4F); g.lineStyle(2, 0x111111);
+      if (isBuyer) {
+        // Messy hair
+        g.drawRect(-12, -36, 24, 8);
+        g.drawRect(-14, -32, 4, 10);
+        g.drawRect(10, -32, 4, 6);
+      } else {
+        // Neat hair
+        g.drawRect(-10, -35, 20, 6);
+        g.drawRect(-12, -32, 2, 12);
+      }
+      g.endFill();
+
+      // Eyes
+      g.beginFill(0x111111); g.lineStyle(0);
+      g.drawRect(-5, -24, 3, 3);
+      g.drawRect(2, -24, 3, 3);
+      g.endFill();
+      
+      // Glasses for merchant
+      if (!isBuyer) {
+        g.lineStyle(1, 0x111111);
+        g.drawRect(-6, -25, 5, 4);
+        g.drawRect(1, -25, 5, 4);
+        g.moveTo(-1, -23); g.lineTo(1, -23);
+      }
+
+      // Desk Nameplate (front)
+      g.beginFill(0x222222); g.lineStyle(2, 0x111111); 
+      g.drawRect(-25, 28, 50, 16); 
+      g.endFill();
     };
     
-    // (Bubbles rendered in React DOM)
-
-    renderAgent(buyerG, 0x5BC0DE);
-    renderAgent(merchantG, 0xD9534F);
+    renderAgent(buyerG, 0x5BC0DE, true);
+    renderAgent(merchantG, 0xD9534F, false);
 
     // Initial agent positions
     let buyerPos = { ...LAYOUT.BUYER_DESK };
@@ -147,7 +224,7 @@ export const OfficeScene: React.FC = () => {
     // DOCUMENT (Moving Envelope)
     // ==========================================
     const docContainer = new PIXI.Container();
-    app.stage.addChild(docContainer);
+    gameWorld.addChild(docContainer);
     const docG = new PIXI.Graphics();
     docContainer.addChild(docG);
     
@@ -164,7 +241,7 @@ export const OfficeScene: React.FC = () => {
     // LIGHTING (Topmost layer, blend mode)
     // ==========================================
     const lightingOverlay = createLighting(LAYOUT.OFFICE_WIDTH, LAYOUT.OFFICE_HEIGHT, LAYOUT.BUYER_DESK, LAYOUT.MERCHANT_DESK, LAYOUT.POLICY_ENGINE);
-    app.stage.addChild(lightingOverlay);
+    gameWorld.addChild(lightingOverlay);
 
     // ==========================================
     // STAGE 8: TICKER / ANIMATION LOOP
@@ -175,6 +252,10 @@ export const OfficeScene: React.FC = () => {
       const s = stateRef.current;
       frame++;
       
+      // Center the game world in the dynamically sized app screen
+      gameWorld.x = Math.floor((app.screen.width - LAYOUT.OFFICE_WIDTH) / 2);
+      gameWorld.y = Math.floor((app.screen.height - LAYOUT.OFFICE_HEIGHT) / 2);
+
       // Idle Animations (Subtle bobbing)
       const bIdleOffset = (s.buyerState === 'idle') ? Math.sin(frame * 0.05) * 2 : 0;
       const mIdleOffset = (s.merchantState === 'idle') ? Math.sin(frame * 0.05 + 1) * 2 : 0;
@@ -212,8 +293,6 @@ export const OfficeScene: React.FC = () => {
       policyStatusG.drawRect(LAYOUT.POLICY_ENGINE.x - 20, LAYOUT.POLICY_ENGINE.y + 45, 40, 6);
       policyStatusG.endFill();
 
-      // Update Dialogues (handled by React state now)
-
       // Update Document
       if (s.movingDocument?.visible) {
         docContainer.visible = true;
@@ -249,40 +328,22 @@ export const OfficeScene: React.FC = () => {
     };
   }, []);
 
-  // Calculate DOM overlay percentages based on 1200x600 layout
-  const buyerBubbleStyle = {
-    left: '45.83%', // (550 / 1200)
-    top: '44.16%',  // ((350 - 85) / 600)
-    transform: 'translate(-50%, -50%)',
-  };
-
-  const merchantBubbleStyle = {
-    left: '54.16%', // (650 / 1200)
-    top: '44.16%',
-    transform: 'translate(-50%, -50%)',
-  };
-
   return (
     <div className="absolute inset-0 flex items-center justify-center overflow-hidden z-0">
-      <div className="relative w-full max-h-full aspect-[2/1] flex items-center justify-center">
+      <div className="relative w-full h-full flex items-center justify-center">
         <div ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ imageRendering: 'pixelated' }} />
         
-        {/* HTML DOM Dialogue Bubbles for crystal clear text */}
-        {state.activeMessage?.visible && state.activeMessage.sender === 'buyer' && (
-          <div className="absolute z-10 w-48 bg-white border-2 border-[#111111] p-3 text-sm font-sans text-center text-[#333333] shadow-[4px_4px_0_0_rgba(17,17,17,1)]" style={buyerBubbleStyle}>
-            {state.activeMessage.text}
-            <div className="absolute -bottom-[10px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[10px] border-t-[#111111]"></div>
-            <div className="absolute -bottom-[6px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-white"></div>
-          </div>
-        )}
-
-        {state.activeMessage?.visible && state.activeMessage.sender === 'merchant' && (
-          <div className="absolute z-10 w-48 bg-white border-2 border-[#111111] p-3 text-sm font-sans text-center text-[#333333] shadow-[4px_4px_0_0_rgba(17,17,17,1)]" style={merchantBubbleStyle}>
-            {state.activeMessage.text}
-            <div className="absolute -bottom-[10px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[10px] border-t-[#111111]"></div>
-            <div className="absolute -bottom-[6px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-white"></div>
-          </div>
-        )}
+        <PixelSpeechBubble 
+           agent="buyer" 
+           message={state.activeMessage?.text || ""} 
+           visible={state.activeMessage?.visible === true && state.activeMessage.sender === 'buyer'} 
+        />
+        
+        <PixelSpeechBubble 
+           agent="merchant" 
+           message={state.activeMessage?.text || ""} 
+           visible={state.activeMessage?.visible === true && state.activeMessage.sender === 'merchant'} 
+        />
       </div>
     </div>
   );
