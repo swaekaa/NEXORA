@@ -38,7 +38,9 @@ def format_state_for_llm(state: BuyerAgentState) -> list:
     
     # Safely format product catalog for context
     catalog_text = "Available Products:\n"
-    if not state["candidate_products"]:
+    if state.get("selected_product_id") and state.get("merchant_counter"):
+        catalog_text += f"You are currently negotiating for Product ID: {state.get('selected_product_id')}. Do NOT search for products. Focus on responding to the counteroffer.\n"
+    elif not state["candidate_products"]:
         if state.get("step_count", 0) > 0:
             catalog_text += "No products were found matching your query! You MUST take the STOP action since there is nothing to buy.\n"
         else:

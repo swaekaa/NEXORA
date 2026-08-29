@@ -73,6 +73,13 @@ async def run_negotiation_loop(negotiation_id: uuid.UUID, intent: BuyerIntent):
                 
             if result.get("status") == "failed":
                 logger.error(f"Merchant agent failed: {result.get('error_reason')}")
+                # Mark as expired so the frontend doesn't hang forever
+                async with AsyncSessionLocal() as session:
+                    neg_to_expire = await get_negotiation(session, negotiation_id)
+                    if neg_to_expire:
+                        neg_to_expire.state = NegotiationState.EXPIRED.value
+                        session.add(neg_to_expire)
+                        await session.commit()
                 break
                 
             logger.info(f"POLICY_CHECK_COMPLETED | negotiation_id={negotiation_id} | decision={result.get('policy_decision')}")
@@ -84,6 +91,12 @@ async def run_negotiation_loop(negotiation_id: uuid.UUID, intent: BuyerIntent):
                 
                 if new_latest_message_id == previous_latest_message_id:
                     logger.error(f"AGENT_NO_MESSAGE_PERSISTED | negotiation_id={negotiation_id} | actor=MERCHANT_AGENT")
+                    # Mark as expired so the frontend doesn't hang forever
+                    neg_to_expire = await get_negotiation(session, negotiation_id)
+                    if neg_to_expire:
+                        neg_to_expire.state = NegotiationState.EXPIRED.value
+                        session.add(neg_to_expire)
+                        await session.commit()
                     break
                     
                 logger.info(f"MESSAGE_PERSISTED | negotiation_id={negotiation_id} | message_id={new_latest_message_id} | sender=MERCHANT_AGENT")
@@ -103,6 +116,13 @@ async def run_negotiation_loop(negotiation_id: uuid.UUID, intent: BuyerIntent):
                 
             if result.get("status") == "failed":
                 logger.error(f"Buyer agent failed: {result.get('error_reason')}")
+                # Mark as expired so the frontend doesn't hang forever
+                async with AsyncSessionLocal() as session:
+                    neg_to_expire = await get_negotiation(session, negotiation_id)
+                    if neg_to_expire:
+                        neg_to_expire.state = NegotiationState.EXPIRED.value
+                        session.add(neg_to_expire)
+                        await session.commit()
                 break
                 
             # DUPLICATE RUN PREVENTION (Requirement 5)
@@ -112,6 +132,12 @@ async def run_negotiation_loop(negotiation_id: uuid.UUID, intent: BuyerIntent):
                 
                 if new_latest_message_id == previous_latest_message_id:
                     logger.error(f"AGENT_NO_MESSAGE_PERSISTED | negotiation_id={negotiation_id} | actor=BUYER_AGENT")
+                    # Mark as expired so the frontend doesn't hang forever
+                    neg_to_expire = await get_negotiation(session, negotiation_id)
+                    if neg_to_expire:
+                        neg_to_expire.state = NegotiationState.EXPIRED.value
+                        session.add(neg_to_expire)
+                        await session.commit()
                     break
                     
                 logger.info(f"MESSAGE_PERSISTED | negotiation_id={negotiation_id} | message_id={new_latest_message_id} | sender=BUYER_AGENT")

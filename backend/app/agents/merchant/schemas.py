@@ -58,9 +58,9 @@ class MerchantAgentAction(BaseModel):
     action: MerchantActionType
     
     # Fields required for COUNTER_PROPOSAL (strings to prevent JSON float precision loss)
-    proposed_unit_price: str | None = None
-    proposed_discount_percent: str | None = None
-    proposed_quantity: int | None = None
+    proposed_unit_price: str | None = Field(None, description="REQUIRED if action is COUNTER_PROPOSAL. The unit price you want to counter with.")
+    proposed_discount_percent: str | None = Field(None, description="Optional. The discount percentage.")
+    proposed_quantity: int | None = Field(None, description="REQUIRED if action is COUNTER_PROPOSAL. The quantity of items you want to counter with.")
     
     reason: str = Field(..., description="The reasoning behind selecting this action.")
 
