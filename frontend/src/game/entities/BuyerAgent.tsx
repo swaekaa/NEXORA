@@ -99,7 +99,7 @@ export const BuyerAgent: React.FC = () => {
     <>
       <Graphics draw={drawAgent} x={pos.x} y={pos.y} />
       <Text 
-        text="Alex" 
+        text="Jake" 
         x={pos.x} 
         y={pos.y + 28} 
         anchor={0.5} 

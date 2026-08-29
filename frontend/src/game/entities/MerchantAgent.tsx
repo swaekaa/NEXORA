@@ -97,7 +97,7 @@ export const MerchantAgent: React.FC = () => {
     <>
       <Graphics draw={drawAgent} x={pos.x} y={pos.y} />
       <Text 
-        text="Morgan" 
+        text="Holt" 
         x={pos.x} 
         y={pos.y + 28} 
         anchor={0.5} 

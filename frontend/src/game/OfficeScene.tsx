@@ -145,95 +145,83 @@ export const OfficeScene: React.FC = () => {
     
     const buyerG = new PIXI.Graphics();
     buyerContainer.addChild(buyerG);
-    const buyerName = new PIXI.Text('Alex', new PIXI.TextStyle({ fontFamily: 'sans-serif', fontSize: 10, fill: '#5BC0DE', fontWeight: 'bold', stroke: '#111111', strokeThickness: 2 }));
-    buyerName.anchor.set(0.5); buyerName.y = 28; buyerContainer.addChild(buyerName);
+    const buyerName = new PIXI.Text('Jake', new PIXI.TextStyle({ fontFamily: 'sans-serif', fontSize: 10, fill: '#5BC0DE', fontWeight: 'bold', stroke: '#111111', strokeThickness: 2 }));
+    buyerName.anchor.set(0.5); buyerName.y = 35; buyerContainer.addChild(buyerName);
     
     const merchantG = new PIXI.Graphics();
     merchantContainer.addChild(merchantG);
-    const merchantName = new PIXI.Text('Morgan', new PIXI.TextStyle({ fontFamily: 'sans-serif', fontSize: 10, fill: '#D9534F', fontWeight: 'bold', stroke: '#111111', strokeThickness: 2 }));
-    merchantName.anchor.set(0.5); merchantName.y = 28; merchantContainer.addChild(merchantName);
+    const merchantName = new PIXI.Text('Holt', new PIXI.TextStyle({ fontFamily: 'sans-serif', fontSize: 10, fill: '#D9534F', fontWeight: 'bold', stroke: '#111111', strokeThickness: 2 }));
+    merchantName.anchor.set(0.5); merchantName.y = 35; merchantContainer.addChild(merchantName);
 
     // Dialogues moved to HTML DOM for crisp text rendering
 
     const renderAgent = (g: PIXI.Graphics, color: number, isBuyer: boolean) => {
       g.clear();
-      // Chair shadow (blocky)
-      g.beginFill(0x000000, 0.2); g.lineStyle(0); g.drawRect(-22, 32, 44, 12); g.endFill();
       
-      // Chair backrest (dark grey/black)
+      const skinColor = isBuyer ? 0xFFDCB6 : 0xD2996C; // Light peach for buyer, darker tan for merchant
+      const shirtColor = color; // Use the passed agent color (cyan/red)
+      const hairColor = isBuyer ? 0x4E342E : 0x283593; // Dark brown for buyer, Deep blue/purple for merchant
+      
+      // Shadow
+      g.beginFill(0x000000, 0.2); g.lineStyle(0); g.drawRect(-24, 32, 48, 12); g.endFill();
+      
+      // Chair backrest (dark grey/black) - Keep it so they are still sitting
       g.beginFill(0x222222); g.lineStyle(2, 0x111111);
-      g.drawRect(-18, -10, 36, 40);
+      g.drawRect(-16, -5, 32, 35);
       g.endFill();
+
+      // Body (Shirt)
+      g.beginFill(shirtColor); g.lineStyle(2, 0x111111);
+      g.drawRect(-14, 10, 28, 18); // Small stubby body
+      g.endFill();
+
+      // Arms (Short sleeves)
+      g.beginFill(shirtColor); g.lineStyle(2, 0x111111);
+      g.drawRect(-18, 12, 4, 10); // left sleeve
+      g.drawRect(14, 12, 4, 10); // right sleeve
+      g.endFill();
+
+      // Hands
+      g.beginFill(skinColor); g.lineStyle(2, 0x111111);
+      g.drawRect(-18, 22, 4, 5);
+      g.drawRect(14, 22, 4, 5);
+      g.endFill();
+
+      // Head (Large boxy shape)
+      g.beginFill(skinColor); g.lineStyle(2, 0x111111);
+      g.drawRect(-14, -18, 28, 28);
+      g.endFill();
+
+      // Eyes (Vertical black rectangles, low on face like the reference)
+      g.beginFill(0x111111); g.lineStyle(0);
+      g.drawRect(-6, -4, 4, 6);
+      g.drawRect(4, -4, 4, 6);
       
-      // Arms (resting on desk or chair arms)
-      g.beginFill(color); g.lineStyle(2, 0x111111);
-      g.drawRect(-22, 5, 8, 16); // Left arm
-      g.drawRect(14, 5, 8, 16); // Right arm
-      g.endFill();
-
-      // Hands (blocky)
-      g.beginFill(0xF5DEB3); g.lineStyle(1, 0x111111);
-      g.drawRect(-20, 20, 4, 4); // Left hand
-      g.drawRect(16, 20, 4, 4); // Right hand
-      g.endFill();
-
-      // Body / Suit (shirt + tie for merchant, casual jacket for buyer)
-      g.beginFill(color); g.lineStyle(2, 0x111111);
-      g.drawRect(-14, -10, 28, 30); 
-      g.endFill();
-      
-      // Shirt inner V
-      g.beginFill(0xFFFFFF); g.lineStyle(0);
-      g.drawPolygon([-6, -10, 6, -10, 0, 5]);
-      g.endFill();
-
-      if (!isBuyer) {
-        // Red tie for Merchant
-        g.beginFill(0xD9534F); g.lineStyle(1, 0x111111);
-        g.drawPolygon([-2, -8, 2, -8, 0, 4]);
-        g.endFill();
-      } else {
-        // Lanyard for Buyer
-        g.beginFill(0x333333);
-        g.drawRect(-5, -10, 2, 12);
-        g.drawRect(3, -10, 2, 12);
-        g.beginFill(0x5BC0DE); g.lineStyle(1, 0x111111);
-        g.drawRect(-3, 2, 6, 8);
-        g.endFill();
-      }
-
-      // Head
-      g.beginFill(0xF5DEB3); g.lineStyle(2, 0x111111);
-      g.drawRect(-10, -32, 20, 22);
+      // Optional: tiny blush on cheeks
+      g.beginFill(0xFFB6C1, 0.5);
+      g.drawRect(-12, 2, 4, 3);
+      g.drawRect(10, 2, 4, 3);
       g.endFill();
 
       // Hair
-      g.beginFill(isBuyer ? 0x8B4513 : 0x2F4F4F); g.lineStyle(2, 0x111111);
+      g.beginFill(hairColor); g.lineStyle(2, 0x111111);
       if (isBuyer) {
-        // Messy hair
-        g.drawRect(-12, -36, 24, 8);
-        g.drawRect(-14, -32, 4, 10);
-        g.drawRect(10, -32, 4, 6);
+        // Top-left reference style: messy top, slightly over forehead
+        g.drawRect(-16, -24, 32, 10); // Main top volume
+        g.drawRect(-16, -14, 6, 8);   // Left sideburn/overlap
+        g.drawRect(-4, -28, 10, 4);   // Little cowlick
       } else {
-        // Neat hair
-        g.drawRect(-10, -35, 20, 6);
-        g.drawRect(-12, -32, 2, 12);
+        // Top-right reference style: beanie / flat top hair
+        g.drawRect(-16, -22, 32, 12); // Main flat top
+        g.drawRect(-16, -10, 4, 8);  // Side 1
+        g.drawRect(12, -10, 4, 8);   // Side 2
+        
+        // Texture lines on hair/hat
+        g.beginFill(0x3949AB); g.lineStyle(0);
+        g.drawRect(-10, -20, 4, 10);
+        g.drawRect(2, -20, 4, 10);
       }
       g.endFill();
-
-      // Eyes
-      g.beginFill(0x111111); g.lineStyle(0);
-      g.drawRect(-5, -24, 3, 3);
-      g.drawRect(2, -24, 3, 3);
-      g.endFill();
-      
-      // Glasses for merchant
-      if (!isBuyer) {
-        g.lineStyle(1, 0x111111);
-        g.drawRect(-6, -25, 5, 4);
-        g.drawRect(1, -25, 5, 4);
-        g.moveTo(-1, -23); g.lineTo(1, -23);
-      }
 
       // Desk Nameplate (front)
       g.beginFill(0x222222); g.lineStyle(2, 0x111111); 

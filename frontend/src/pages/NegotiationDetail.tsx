@@ -60,7 +60,7 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
              <div key={i} className="flex flex-col gap-1 border-l-2 pl-3 py-1" style={{ borderLeftColor: e.agent === 'buyer' ? '#5BC0DE' : '#D9534F' }}>
                <div className="flex items-center gap-2">
                  <span className={e.agent === 'buyer' ? 'text-[#5BC0DE] font-bold text-[11px]' : 'text-[#D9534F] font-bold text-[11px]'}>
-                   {e.agent === 'buyer' ? 'Alex' : 'Morgan'}
+                   {e.agent === 'buyer' ? 'Jake' : 'Holt'}
                  </span>
                  <span className="text-[#888888] text-[9px]">{new Date(e.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' })}</span>
                </div>
