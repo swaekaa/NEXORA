@@ -47,6 +47,7 @@ export interface NegotiationEvent {
     reasons?: string[];
   };
   negotiationId?: string;
+  isHistorical?: boolean;
 }
 
 export interface SimulationState {

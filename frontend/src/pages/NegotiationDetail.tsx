@@ -7,18 +7,26 @@ import { MockEventStream, LiveEventStream, NegotiationEventStream, IdleEventStre
 import { NegotiationHUD } from '../components/hud/NegotiationHUD';
 import { ActivityLog } from '../components/hud/ActivityLog';
 import { api } from '../api';
+import { useNegotiationSession } from '../hooks/useNegotiationSession';
 
 const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode: boolean, simulationMode: 'setup' | 'live' | 'demo', children?: React.ReactNode }) => {
   const { state } = useGame();
   const activityLogRef = useRef<HTMLDivElement>(null);
   const [logWidth, setLogWidth] = useState(288); // Default 72rem
   const isDragging = useRef(false);
+  const { clearSession } = useNegotiationSession();
   
   useEffect(() => {
     if (activityLogRef.current) {
       activityLogRef.current.scrollTop = activityLogRef.current.scrollHeight;
     }
   }, [state.events]);
+
+  useEffect(() => {
+    if (state.dealStatus === 'complete' || state.dealStatus === 'failed') {
+      clearSession();
+    }
+  }, [state.dealStatus, clearSession]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -91,9 +99,21 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
         <div className="absolute inset-0 pointer-events-none z-10">
           <NegotiationHUD />
           {!setupMode && (
-             <div className="absolute top-4 left-4 text-[#888888] font-bold tracking-widest text-sm uppercase bg-white/50 px-3 py-2 border-[2px] border-[#333333] pointer-events-auto shadow-[2px_2px_0_0_rgba(51,51,51,1)]">
-               NEXORA // DEAL FLOOR
-             </div>
+             <>
+               <div className="absolute top-4 left-4 text-[#888888] font-bold tracking-widest text-sm uppercase bg-white/50 px-3 py-2 border-[2px] border-[#333333] pointer-events-auto shadow-[2px_2px_0_0_rgba(51,51,51,1)]">
+                 NEXORA // DEAL FLOOR
+               </div>
+               
+               {/* Button to start a new negotiation */}
+               <div className="absolute top-4 right-4 pointer-events-auto">
+                 <button 
+                   onClick={() => window.location.href = '/office?new=true'}
+                   className="bg-[#333333] text-white border-2 border-[#111111] px-4 py-2 font-bold text-xs tracking-widest uppercase hover:bg-[#111111] shadow-[2px_2px_0_0_rgba(51,51,51,1)] active:translate-y-px active:shadow-none transition-transform"
+                 >
+                   + NEW NEGOTIATION
+                 </button>
+               </div>
+             </>
           )}
         </div>
         
@@ -129,30 +149,94 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
 export default function NegotiationDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { activeNegotiationId, setActiveNegotiationId, clearSession } = useNegotiationSession();
   
   const [stream, setStream] = useState<NegotiationEventStream | null>(null);
   const [simulationMode, setSimulationMode] = useState<'setup' | 'live' | 'demo'>('setup');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  // State for constraints
+  // State for buyer constraints
   const [maxBudget, setMaxBudget] = useState('1500000');
   const [quantity, setQuantity] = useState('100');
   const [requirements, setRequirements] = useState('Must include 1 year warranty. Delivery within 14 days.');
 
+  // State for merchant policy
+  const [minPrice, setMinPrice] = useState('10000');
+  const [maxDiscount, setMaxDiscount] = useState('20');
+  const [maxAutonomousTransaction, setMaxAutonomousTransaction] = useState('500000');
+  const [maxRounds, setMaxRounds] = useState('5');
+  const [humanApproval, setHumanApproval] = useState(false);
+
   useEffect(() => {
+    let active = true;
+    async function loadInitialState() {
+      // Check query params
+      const searchParams = new URLSearchParams(window.location.search);
+      const isNew = searchParams.get('new') === 'true';
+
+      if (id) {
+        // 1. URL ID has highest precedence
+        setSimulationMode('live');
+        const liveStream = new LiveEventStream();
+        setStream(liveStream);
+        liveStream.start(id);
+      } else if (isNew) {
+        // 2. Explicit new negotiation requested
+        clearSession();
+        setSimulationMode('setup');
+      } else if (activeNegotiationId) {
+        // 3. Persisted active session
+        setSimulationMode('live');
+        const liveStream = new LiveEventStream();
+        setStream(liveStream);
+        liveStream.start(activeNegotiationId);
+      } else {
+        // 4. Default to setup
+        setSimulationMode('setup');
+      }
+    }
+    
+    if (!stream) {
+      loadInitialState();
+    }
+
     return () => {
+      active = false;
       if (stream) stream.stop();
     };
-  }, [stream]);
+  }, [id, activeNegotiationId]);
+
+  const startNewSetup = () => {
+    if (stream) stream.stop();
+    setStream(null);
+    clearSession();
+    setSimulationMode('setup');
+    navigate('/office?new=true');
+  };
 
   const startLive = async () => {
     try {
       setErrorMsg(null);
       setSimulationMode('live');
       
+      const merchant_id = "987f6543-e21b-34c5-b678-426614174999";
+      const buyer_id = "123e4567-e89b-12d3-a456-426614174000";
+
+      // 1. Create/activate Merchant Policy
+      await api.policies.create(merchant_id, {
+        name: "Custom Live Policy",
+        minimum_price: minPrice,
+        maximum_discount_percent: maxDiscount,
+        maximum_autonomous_transaction: maxAutonomousTransaction,
+        max_negotiation_rounds: parseInt(maxRounds, 10),
+        human_approval_required: humanApproval,
+        is_active: true
+      });
+
+      // 2. Submit Buyer Intent
       const intent = {
-          buyer_id: "123e4567-e89b-12d3-a456-426614174000",
-          merchant_id: "987f6543-e21b-34c5-b678-426614174999",
+          buyer_id,
+          merchant_id,
           product_query: "monitor",
           quantity: parseInt(quantity, 10),
           maximum_budget: parseFloat(maxBudget),
@@ -163,9 +247,11 @@ export default function NegotiationDetail() {
       const response = await api.buyers.runAgent(intent.buyer_id, intent);
       
       if (response.negotiation_id) {
+          setActiveNegotiationId(response.negotiation_id);
           const liveStream = new LiveEventStream();
           setStream(liveStream);
           liveStream.start(response.negotiation_id);
+          navigate(`/negotiations/${response.negotiation_id}`);
       } else {
           console.error("No negotiation ID returned", response);
           setErrorMsg(response.error_reason || "Agent stopped unexpectedly (e.g. found no products matching your query).");
@@ -204,52 +290,122 @@ export default function NegotiationDetail() {
           
           <NegotiationContent setupMode={simulationMode === 'setup'} simulationMode={simulationMode}>
             {simulationMode === 'setup' && (
-              <div className="absolute inset-0 z-50 bg-[#EAE8DD]/90 backdrop-blur-sm flex items-center justify-center">
-                <div className="bg-[#FFFDF7] border-4 border-[#333333] shadow-[8px_8px_0_0_rgba(51,51,51,1)] p-8 max-w-lg w-full font-sans">
-                  <h2 className="text-xl font-bold mb-2">Configure Constraints</h2>
-                  <p className="text-sm text-[#888888] mb-6">Set up your procurement agent constraints before beginning the autonomous negotiation.</p>
+              <div className="absolute inset-0 z-50 bg-[#EAE8DD]/90 backdrop-blur-sm flex items-center justify-center p-8 overflow-y-auto custom-scrollbar">
+                <div className="bg-[#FFFDF7] border-4 border-[#333333] shadow-[8px_8px_0_0_rgba(51,51,51,1)] p-8 max-w-4xl w-full font-sans flex flex-col">
                   
                   {errorMsg && (
                     <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm font-mono">
                       <strong>Deployment Failed:</strong> {errorMsg}
                     </div>
                   )}
-                  
-                  <div className="space-y-4 font-mono text-sm">
-                    <div>
-                      <label className="block text-[#888888] mb-1">MAXIMUM PRICE TOTAL (₹)</label>
-                      <input 
-                        type="number" 
-                        value={maxBudget}
-                        onChange={e => setMaxBudget(e.target.value)}
-                        className="w-full bg-[#EAE8DD] border-2 border-[#333333] p-2 outline-none" 
-                      />
+
+                  <div className="flex flex-col md:flex-row gap-8">
+                    {/* Buyer Constraints */}
+                    <div className="flex-1">
+                      <h2 className="text-xl font-bold mb-2">Configure Buyer Constraints</h2>
+                      <p className="text-sm text-[#888888] mb-6">Set up your procurement agent constraints before beginning the autonomous negotiation.</p>
+                      
+                      <div className="space-y-4 font-mono text-sm">
+                        <div>
+                          <label className="block text-[#888888] mb-1">MAXIMUM BUDGET TOTAL (₹)</label>
+                          <input 
+                            type="number" 
+                            value={maxBudget}
+                            onChange={e => setMaxBudget(e.target.value)}
+                            className="w-full bg-[#EAE8DD] border-2 border-[#333333] p-2 outline-none focus:bg-white transition-colors" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[#888888] mb-1">QUANTITY</label>
+                          <input 
+                            type="number" 
+                            value={quantity}
+                            onChange={e => setQuantity(e.target.value)}
+                            className="w-full bg-[#EAE8DD] border-2 border-[#333333] p-2 outline-none focus:bg-white transition-colors" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[#888888] mb-1">HARD REQUIREMENTS</label>
+                          <textarea 
+                            value={requirements}
+                            onChange={e => setRequirements(e.target.value)}
+                            className="w-full bg-[#EAE8DD] border-2 border-[#333333] p-2 outline-none h-24 resize-none focus:bg-white transition-colors custom-scrollbar"
+                          ></textarea>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[#888888] mb-1">QUANTITY</label>
-                      <input 
-                        type="number" 
-                        value={quantity}
-                        onChange={e => setQuantity(e.target.value)}
-                        className="w-full bg-[#EAE8DD] border-2 border-[#333333] p-2 outline-none" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[#888888] mb-1">HARD REQUIREMENTS</label>
-                      <textarea 
-                        value={requirements}
-                        onChange={e => setRequirements(e.target.value)}
-                        className="w-full bg-[#EAE8DD] border-2 border-[#333333] p-2 outline-none h-20 resize-none"
-                      ></textarea>
+
+                    <div className="hidden md:block w-0.5 bg-[#333333]/20"></div>
+
+                    {/* Merchant Policy */}
+                    <div className="flex-1">
+                      <h2 className="text-xl font-bold mb-2">Configure Merchant Policy</h2>
+                      <p className="text-sm text-[#888888] mb-6">Set the deterministic rules that govern the Merchant Agent.</p>
+                      
+                      <div className="space-y-4 font-mono text-sm">
+                        <div>
+                          <label className="block text-[#888888] mb-1">MINIMUM UNIT PRICE (₹)</label>
+                          <input 
+                            type="number" 
+                            value={minPrice}
+                            onChange={e => setMinPrice(e.target.value)}
+                            className="w-full bg-[#EAE8DD] border-2 border-[#333333] p-2 outline-none focus:bg-white transition-colors" 
+                          />
+                        </div>
+                        <div className="flex gap-4">
+                          <div className="flex-1">
+                            <label className="block text-[#888888] mb-1">MAX DISCOUNT (%)</label>
+                            <input 
+                              type="number" 
+                              value={maxDiscount}
+                              onChange={e => setMaxDiscount(e.target.value)}
+                              className="w-full bg-[#EAE8DD] border-2 border-[#333333] p-2 outline-none focus:bg-white transition-colors" 
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-[#888888] mb-1">MAX ROUNDS</label>
+                            <input 
+                              type="number" 
+                              value={maxRounds}
+                              onChange={e => setMaxRounds(e.target.value)}
+                              className="w-full bg-[#EAE8DD] border-2 border-[#333333] p-2 outline-none focus:bg-white transition-colors" 
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[#888888] mb-1">MAX AUTONOMOUS TRANSACTION (₹)</label>
+                          <input 
+                            type="number" 
+                            value={maxAutonomousTransaction}
+                            onChange={e => setMaxAutonomousTransaction(e.target.value)}
+                            className="w-full bg-[#EAE8DD] border-2 border-[#333333] p-2 outline-none focus:bg-white transition-colors" 
+                          />
+                        </div>
+                        <div className="flex items-center gap-3 pt-2">
+                          <button
+                            onClick={() => setHumanApproval(!humanApproval)}
+                            className={`w-6 h-6 border-2 border-[#333333] flex items-center justify-center transition-colors ${humanApproval ? 'bg-[#D9534F]' : 'bg-[#EAE8DD]'}`}
+                          >
+                            {humanApproval && (
+                              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                          <label className="text-[#333333] font-bold cursor-pointer" onClick={() => setHumanApproval(!humanApproval)}>
+                            REQUIRE HUMAN APPROVAL FOR ALL DEALS
+                          </label>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="mt-8 flex justify-end">
+                  <div className="mt-8 pt-8 border-t-2 border-[#333333]/20 flex justify-end">
                     <button 
                       onClick={startLive}
-                      className="bg-[#D9534F] text-white border-2 border-[#333333] px-6 py-2 font-bold tracking-widest uppercase hover:bg-[#c9302c] shadow-[4px_4px_0_0_rgba(51,51,51,1)] transition-transform active:translate-y-1 active:shadow-none"
+                      className="bg-[#D9534F] text-white border-2 border-[#333333] px-8 py-3 font-bold tracking-widest uppercase hover:bg-[#c9302c] shadow-[4px_4px_0_0_rgba(51,51,51,1)] transition-transform active:translate-y-1 active:shadow-none"
                     >
-                      DEPLOY AGENT & START (LIVE)
+                      DEPLOY AGENTS & START (LIVE)
                     </button>
                   </div>
                 </div>

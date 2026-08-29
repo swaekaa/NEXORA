@@ -5,6 +5,7 @@ import NegotiationDetail from './pages/NegotiationDetail';
 import MerchantDashboard from './pages/MerchantDashboard';
 import AgreementDetail from './pages/AgreementDetail';
 import PolicyPage from './pages/PolicyPage';
+import AuditTrailPage from './pages/AuditTrailPage';
 
 export default function App() {
   return (
@@ -15,10 +16,10 @@ export default function App() {
           <Route path="office" element={<NegotiationDetail />} />
           <Route path="agents" element={<BuyerPage />} />
           <Route path="negotiations/:id" element={<NegotiationDetail />} />
-          <Route path="merchant" element={<MerchantDashboard />} />
-          <Route path="agreements" element={<MerchantDashboard />} />
-          <Route path="agreements/:id" element={<AgreementDetail />} />
+          <Route path="deals" element={<MerchantDashboard />} />
+          <Route path="deals/:id" element={<AgreementDetail />} />
           <Route path="policies" element={<PolicyPage />} />
+          <Route path="audit" element={<AuditTrailPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

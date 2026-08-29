@@ -76,3 +76,31 @@ export interface AuditEvent {
   metadata: any;
   created_at: string;
 }
+
+export interface Policy {
+  id: string;
+  merchant_id: string;
+  name: string;
+  minimum_price: string;
+  maximum_discount_percent: string;
+  maximum_autonomous_transaction: string;
+  human_approval_required: boolean;
+  is_active: boolean;
+  max_negotiation_rounds: number;
+  max_delivery_days: number;
+  min_warranty_months: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PolicyCreate {
+  name?: string;
+  minimum_price: string;
+  maximum_discount_percent?: string;
+  maximum_autonomous_transaction: string;
+  human_approval_required?: boolean;
+  is_active?: boolean;
+  max_negotiation_rounds?: number;
+  max_delivery_days?: number;
+  min_warranty_months?: number;
+}

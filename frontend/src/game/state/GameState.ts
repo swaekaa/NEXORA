@@ -88,29 +88,31 @@ export function useGameEngine(stream: NegotiationEventStream) {
       dispatch({ type: 'ADD_EVENT', payload: event });
       
       // Auto-trigger visual side-effects based on events
-      if (event.message && event.agent) {
-        dispatch({ type: 'SET_ACTIVE_MESSAGE', payload: { text: event.message, sender: event.agent } });
-        // Hide message after a few seconds (increased to 7s for readability)
-        setTimeout(() => dispatch({ type: 'SET_ACTIVE_MESSAGE', payload: null }), 7000);
-      }
+      if (!event.isHistorical) {
+        if (event.message && event.agent) {
+          dispatch({ type: 'SET_ACTIVE_MESSAGE', payload: { text: event.message, sender: event.agent } });
+          // Hide message after a few seconds (increased to 7s for readability)
+          setTimeout(() => dispatch({ type: 'SET_ACTIVE_MESSAGE', payload: null }), 7000);
+        }
 
-      if (event.type === 'offer' || event.type === 'counteroffer') {
-        const from = event.agent === 'buyer' ? 'buyer' : 'merchant';
-        const to = event.agent === 'buyer' ? 'merchant' : 'buyer';
-        dispatch({ type: 'START_DOCUMENT_MOVE', payload: { from, to, type: 'offer' } });
-        setTimeout(() => dispatch({ type: 'END_DOCUMENT_MOVE' }), 1500); // Animation duration
-      }
+        if (event.type === 'offer' || event.type === 'counteroffer') {
+          const from = event.agent === 'buyer' ? 'buyer' : 'merchant';
+          const to = event.agent === 'buyer' ? 'merchant' : 'buyer';
+          dispatch({ type: 'START_DOCUMENT_MOVE', payload: { from, to, type: 'offer' } });
+          setTimeout(() => dispatch({ type: 'END_DOCUMENT_MOVE' }), 1500); // Animation duration
+        }
 
-      if (event.type === 'policy_check') {
-        // Document travels to policy engine
-        dispatch({ type: 'START_DOCUMENT_MOVE', payload: { from: 'merchant', to: 'policy', type: 'offer' } });
-        setTimeout(() => dispatch({ type: 'END_DOCUMENT_MOVE' }), 1000);
-      }
-      
-      if (event.type === 'policy_result') {
-        // Document returns from policy engine
-        dispatch({ type: 'START_DOCUMENT_MOVE', payload: { from: 'policy', to: 'merchant', type: 'result' } });
-        setTimeout(() => dispatch({ type: 'END_DOCUMENT_MOVE' }), 1000);
+        if (event.type === 'policy_check') {
+          // Document travels to policy engine
+          dispatch({ type: 'START_DOCUMENT_MOVE', payload: { from: 'merchant', to: 'policy', type: 'offer' } });
+          setTimeout(() => dispatch({ type: 'END_DOCUMENT_MOVE' }), 1000);
+        }
+        
+        if (event.type === 'policy_result') {
+          // Document returns from policy engine
+          dispatch({ type: 'START_DOCUMENT_MOVE', payload: { from: 'policy', to: 'merchant', type: 'result' } });
+          setTimeout(() => dispatch({ type: 'END_DOCUMENT_MOVE' }), 1000);
+        }
       }
     };
 

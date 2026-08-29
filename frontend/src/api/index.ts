@@ -1,7 +1,15 @@
 import { fetchApi } from './client';
-import { Negotiation, NegotiationMessage, Agreement, ApprovalRequest, AuditEvent } from '../types/models';
+import { Negotiation, NegotiationMessage, Agreement, ApprovalRequest, AuditEvent, Policy, PolicyCreate } from '../types/models';
 
 export const api = {
+  policies: {
+    create: (merchantId: string, policy: PolicyCreate) => 
+      fetchApi<Policy>(`/merchants/${merchantId}/policies`, { method: 'POST', body: JSON.stringify(policy) }),
+    list: (merchantId: string) => 
+      fetchApi<{ items: Policy[]; total: number }>(`/merchants/${merchantId}/policies`),
+    get: (merchantId: string, policyId: string) => 
+      fetchApi<Policy>(`/merchants/${merchantId}/policies/${policyId}`),
+  },
   buyers: {
     runAgent: (buyerId: string, intent: any) => 
       fetchApi<{ run_id: string; status: string; negotiation_id: string | null; error_reason: string | null }>(

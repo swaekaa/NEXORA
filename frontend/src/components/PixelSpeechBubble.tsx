@@ -59,8 +59,8 @@ export const PixelSpeechBubble: React.FC<PixelSpeechBubbleProps> = ({ agent, mes
            </div>
         </div>
 
-        {/* Content (Removed max-height and scrolling to show full text) */}
-        <div className="p-4 text-[#333333] font-mono text-xs leading-relaxed break-words">
+        {/* Content - Bounded with scrollbar for overflow */}
+        <div className="p-4 text-[#333333] font-mono text-[12px] leading-[18px] break-words overflow-y-auto max-h-[250px] custom-scrollbar">
           {message}
         </div>
       </div>

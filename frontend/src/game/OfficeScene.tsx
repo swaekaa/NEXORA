@@ -292,10 +292,10 @@ export const OfficeScene: React.FC = () => {
       merchantPos.x += (tMerchantPos.x - merchantPos.x) * 0.05;
       merchantPos.y += (tMerchantPos.y - merchantPos.y) * 0.05;
       
-      buyerContainer.x = buyerPos.x;
-      buyerContainer.y = buyerPos.y + bIdleOffset;
-      merchantContainer.x = merchantPos.x;
-      merchantContainer.y = merchantPos.y + mIdleOffset;
+      buyerContainer.x = Math.round(buyerPos.x);
+      buyerContainer.y = Math.round(buyerPos.y + bIdleOffset);
+      merchantContainer.x = Math.round(merchantPos.x);
+      merchantContainer.y = Math.round(merchantPos.y + mIdleOffset);
 
       // Update Policy Core Lights
       policyStatusG.clear();
@@ -331,8 +331,8 @@ export const OfficeScene: React.FC = () => {
            docContainer.x = start.x;
            docContainer.y = start.y;
         } else {
-           docContainer.x += dx * 0.05;
-           docContainer.y += dy * 0.05;
+           docContainer.x = Math.round(docContainer.x + dx * 0.05);
+           docContainer.y = Math.round(docContainer.y + dy * 0.05);
         }
 
         renderDoc(docG, s.movingDocument.type === 'result', s.policyStatus === 'approved');

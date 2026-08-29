@@ -17,7 +17,7 @@ export default function TopNav() {
           <NavLink to="/office" className={({ isActive }) => `h-full flex items-center border-b-4 transition-colors ${isActive ? 'border-[#D9534F] text-[#2A2F35]' : 'border-transparent text-[#888888] hover:text-[#2A2F35]'}`}>
             Office
           </NavLink>
-          <NavLink to="/merchant" className={({ isActive }) => `h-full flex items-center border-b-4 transition-colors ${isActive ? 'border-[#D9534F] text-[#2A2F35]' : 'border-transparent text-[#888888] hover:text-[#2A2F35]'}`}>
+          <NavLink to="/deals" className={({ isActive }) => `h-full flex items-center border-b-4 transition-colors ${isActive ? 'border-[#D9534F] text-[#2A2F35]' : 'border-transparent text-[#888888] hover:text-[#2A2F35]'}`}>
             Deals
           </NavLink>
           <NavLink to="/agents" className={({ isActive }) => `h-full flex items-center border-b-4 transition-colors ${isActive ? 'border-[#D9534F] text-[#2A2F35]' : 'border-transparent text-[#888888] hover:text-[#2A2F35]'}`}>
@@ -25,6 +25,9 @@ export default function TopNav() {
           </NavLink>
           <NavLink to="/policies" className={({ isActive }) => `h-full flex items-center border-b-4 transition-colors ${isActive ? 'border-[#D9534F] text-[#2A2F35]' : 'border-transparent text-[#888888] hover:text-[#2A2F35]'}`}>
             Policies
+          </NavLink>
+          <NavLink to="/audit" className={({ isActive }) => `h-full flex items-center border-b-4 transition-colors ${isActive ? 'border-[#D9534F] text-[#2A2F35]' : 'border-transparent text-[#888888] hover:text-[#2A2F35]'}`}>
+            Audit Trail
           </NavLink>
         </div>
       </div>

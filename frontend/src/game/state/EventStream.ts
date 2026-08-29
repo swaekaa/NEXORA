@@ -90,6 +90,7 @@ export class LiveEventStream implements NegotiationEventStream {
   private negotiationId: string | null = null;
   private processedMessageIds = new Set<string>();
   private isCompleted = false;
+  private isInitialFetch = true;
 
   subscribe(callback: EventCallback) {
     this.callbacks.push(callback);
@@ -111,6 +112,7 @@ export class LiveEventStream implements NegotiationEventStream {
     
     this.processedMessageIds.clear();
     this.isCompleted = false;
+    this.isInitialFetch = true;
     
     if (this.timer) {
       clearTimeout(this.timer);
@@ -134,93 +136,121 @@ export class LiveEventStream implements NegotiationEventStream {
 
     try {
       // Fetch messages and negotiation status
-      const messages = await api.negotiations.getMessages(this.negotiationId);
       const negotiation = await api.negotiations.get(this.negotiationId);
+      const messages = await api.negotiations.getMessages(this.negotiationId);
+      const auditEvents = await api.audit.listForMerchant(negotiation.merchant_id);
 
-      // Find truly new messages
-      const newMessages = messages.filter(msg => !this.processedMessageIds.has(msg.id));
+      // Filter audit events for this specific negotiation
+      const negotiationAudits = auditEvents.filter(a => a.negotiation_id === this.negotiationId);
 
-      // Convert backend messages to frontend events
-      for (const msg of newMessages) {
-        this.processedMessageIds.add(msg.id);
-
-        let agentType: "buyer" | "merchant" | undefined = undefined;
-        if (msg.sender_type === 'buyer_agent') agentType = 'buyer';
-        else if (msg.sender_type === 'merchant_agent') agentType = 'merchant';
-
-        let eventType: any = "message";
-        let state: any = "sending";
-
-        // Map backend message_type exactly
-        if (msg.message_type === "offer") eventType = "offer";
-        else if (msg.message_type === "counter_offer") eventType = "counteroffer";
-        else if (msg.message_type === "accept") {
-            eventType = "acceptance";
-            state = "accepted";
-        } else if (msg.message_type === "reject") {
-            eventType = "rejection";
-            state = "blocked";
+      // Create a combined array of new events
+      const allEvents: any[] = [];
+      
+      messages.forEach(msg => {
+        if (!this.processedMessageIds.has(msg.id)) {
+          allEvents.push({ type: 'message_record', data: msg, timestamp: new Date(msg.created_at).getTime() });
         }
+      });
+      
+      negotiationAudits.forEach(audit => {
+        if (!this.processedMessageIds.has(audit.id)) {
+          allEvents.push({ type: 'audit_record', data: audit, timestamp: new Date(audit.created_at).getTime() });
+        }
+      });
 
-        const event: NegotiationEvent = {
-          id: msg.id,
-          timestamp: msg.created_at,
-          agent: agentType,
-          type: eventType,
-          message: msg.content || undefined,
-          state: state,
-        };
+      // Sort by timestamp
+      allEvents.sort((a, b) => a.timestamp - b.timestamp);
 
-        // Correctly parse payload values
-        if (msg.payload && (msg.payload.unit_price || msg.payload.quantity)) {
-          event.offer = {
-            unitPrice: msg.payload.unit_price,
-            quantity: msg.payload.quantity,
-            total: msg.payload.total_amount,
-            currency: msg.payload.currency,
+      // Convert backend records to frontend events
+      for (const record of allEvents) {
+        if (record.type === 'message_record') {
+          const msg = record.data;
+          this.processedMessageIds.add(msg.id);
+
+          let agentType: "buyer" | "merchant" | undefined = undefined;
+          if (msg.sender_type === 'buyer_agent') agentType = 'buyer';
+          else if (msg.sender_type === 'merchant_agent') agentType = 'merchant';
+
+          let eventType: any = "message";
+          let state: any = "sending";
+
+          if (msg.message_type === "offer") eventType = "offer";
+          else if (msg.message_type === "counter_offer") eventType = "counteroffer";
+          else if (msg.message_type === "accept") {
+              eventType = "acceptance";
+              state = "accepted";
+          } else if (msg.message_type === "reject") {
+              eventType = "rejection";
+              state = "blocked";
+          }
+
+          const event: NegotiationEvent = {
+            id: msg.id,
+            timestamp: msg.created_at,
+            agent: agentType,
+            type: eventType,
+            message: msg.content || undefined,
+            state: state,
+            isHistorical: this.isInitialFetch,
           };
-        }
-        
-        // Notify subscribers
-        this.callbacks.forEach(cb => cb(event));
 
-        // SYNTHESIZE POLICY CHECK FOR VISUALIZATION
-        // When an offer is made, the opposing agent's deterministic policy engine evaluates it.
-        // We trigger this visual sequence while the backend LLM is generating the next response.
-        if (eventType === "offer" || eventType === "counteroffer") {
-          setTimeout(() => {
-             const policyCheck: NegotiationEvent = { 
-               id: msg.id + '-pc', 
-               timestamp: new Date().toISOString(), 
-               type: 'policy_check', 
-               state: 'policy_check' 
-             };
-             this.callbacks.forEach(cb => cb(policyCheck));
-             
-             setTimeout(() => {
-                const policyResult: NegotiationEvent = { 
-                  id: msg.id + '-pr', 
-                  timestamp: new Date().toISOString(), 
-                  type: 'policy_result', 
-                  policy: { status: 'approved' } 
-                };
-                this.callbacks.forEach(cb => cb(policyResult));
-             }, 1500); // Policy check takes 1.5s visually
-          }, 1000); // Start policy check 1s after offer is received
+          if (msg.payload && (msg.payload.unit_price || msg.payload.quantity)) {
+            event.offer = {
+              unitPrice: msg.payload.unit_price,
+              quantity: msg.payload.quantity,
+              total: msg.payload.total_amount,
+              currency: msg.payload.currency,
+            };
+          }
+          
+          this.callbacks.forEach(cb => cb(event));
+          
+        } else if (record.type === 'audit_record') {
+          const audit = record.data;
+          this.processedMessageIds.add(audit.id);
+
+          if (audit.event_type === 'POLICY_CHECK') {
+            const policyCheck: NegotiationEvent = { 
+              id: audit.id, 
+              timestamp: audit.created_at, 
+              type: 'policy_check', 
+              state: 'policy_check',
+              isHistorical: this.isInitialFetch,
+            };
+            this.callbacks.forEach(cb => cb(policyCheck));
+            
+            const decision = audit.metadata?.decision;
+            if (decision) {
+              const policyResult: NegotiationEvent = { 
+                id: audit.id + '-result', 
+                timestamp: audit.created_at, 
+                type: 'policy_result', 
+                policy: { status: decision.toLowerCase() },
+                isHistorical: this.isInitialFetch,
+              };
+              this.callbacks.forEach(cb => cb(policyResult));
+            }
+          }
         }
       }
       
       // Check for terminal state based on Backend enum
       if (negotiation.state === "accepted" || negotiation.state === "rejected" || negotiation.state === "expired") {
-          const terminalEvent: NegotiationEvent = {
-             id: "terminal-" + negotiation.id,
-             timestamp: new Date().toISOString(),
-             type: negotiation.state === "accepted" ? "agreement_created" : "negotiation_failed"
-          };
-          this.callbacks.forEach(cb => cb(terminalEvent));
+          if (!this.processedMessageIds.has("terminal-" + negotiation.id)) {
+            this.processedMessageIds.add("terminal-" + negotiation.id);
+            const terminalEvent: NegotiationEvent = {
+               id: "terminal-" + negotiation.id,
+               timestamp: new Date().toISOString(),
+               type: negotiation.state === "accepted" ? "agreement_created" : "negotiation_failed",
+               isHistorical: this.isInitialFetch,
+            };
+            this.callbacks.forEach(cb => cb(terminalEvent));
+          }
           this.stop();
           return;
       }
+
+      this.isInitialFetch = false;
 
     } catch (e) {
       console.error("Error polling live negotiation stream", e);
