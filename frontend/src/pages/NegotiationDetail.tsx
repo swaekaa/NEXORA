@@ -8,25 +8,30 @@ import { NegotiationHUD } from '../components/hud/NegotiationHUD';
 import { ActivityLog } from '../components/hud/ActivityLog';
 import { api } from '../api';
 import { useNegotiationSession } from '../hooks/useNegotiationSession';
+import { DealApprovedModal } from '../components/agreement/DealApprovedModal';
 
 const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode: boolean, simulationMode: 'setup' | 'live' | 'demo', children?: React.ReactNode }) => {
   const { state } = useGame();
   const activityLogRef = useRef<HTMLDivElement>(null);
   const [logWidth, setLogWidth] = useState(288); // Default 72rem
   const isDragging = useRef(false);
-  const { clearSession } = useNegotiationSession();
+  const { clearSession, activeNegotiationId } = useNegotiationSession();
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    if (state.dealStatus === 'complete') {
+      const timer = setTimeout(() => {
+         setShowModal(true);
+      }, 3000); // 3 seconds delay for visual scene
+      return () => clearTimeout(timer);
+    }
+  }, [state.dealStatus]);
   
   useEffect(() => {
     if (activityLogRef.current) {
       activityLogRef.current.scrollTop = activityLogRef.current.scrollHeight;
     }
   }, [state.events]);
-
-  useEffect(() => {
-    if (state.dealStatus === 'complete' || state.dealStatus === 'failed') {
-      clearSession();
-    }
-  }, [state.dealStatus, clearSession]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -121,25 +126,15 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
         {children}
         
         {/* Deal Complete Popup Overlay */}
-        {state.dealStatus === 'complete' && (
-          <div className="absolute inset-0 z-50 bg-[#EAE8DD]/80 flex items-center justify-center backdrop-blur-sm animate-in fade-in duration-500">
-            <div className="bg-[#FFFDF7] border-4 border-[#111111] p-8 max-w-sm w-full shadow-[8px_8px_0_0_rgba(17,17,17,1)] flex flex-col items-center pointer-events-auto">
-              <div className="w-16 h-16 bg-[#5CB85C] rounded-full border-4 border-[#111111] flex items-center justify-center mb-6">
-                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-bold font-sans text-[#333333] mb-2 uppercase tracking-tight">Deal Agreed</h2>
-              <div className="text-[#888888] font-mono text-xs uppercase tracking-widest mb-6">ID: {agreedEvent?.id || 'NX-0042'}</div>
-              <div className="w-full bg-[#EAE8DD] p-4 border-2 border-[#111111] font-mono text-sm space-y-2">
-                 <div className="flex justify-between"><span className="text-[#888888]">FINAL PRICE</span><span className="font-bold">₹{state.currentOffer?.unitPrice}</span></div>
-                 <div className="flex justify-between"><span className="text-[#888888]">QUANTITY</span><span className="font-bold">{state.currentOffer?.quantity} UNITS</span></div>
-              </div>
-              <button className="mt-8 w-full bg-[#333333] text-white py-3 font-bold uppercase tracking-widest hover:bg-[#111111] transition-colors" onClick={() => window.location.href = '/deals'}>
-                View Contract
-              </button>
-            </div>
-          </div>
+        {showModal && activeNegotiationId && (
+          <DealApprovedModal 
+            negotiationId={activeNegotiationId} 
+            merchantId="987f6543-e21b-34c5-b678-426614174999" 
+            onDismiss={() => {
+               clearSession();
+               window.location.href = '/deals';
+            }} 
+          />
         )}
       </div>
     </div>

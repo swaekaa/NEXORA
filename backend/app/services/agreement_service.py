@@ -142,10 +142,27 @@ async def create_agreement_from_negotiation(
         metadata={"total_amount": str(agreement.total_amount)}
     )
     
-    await session.commit()
-    await session.refresh(agreement)
+    await session.flush()
     
-    return agreement
+    # 6. Immediately validate the agreement to enforce deterministic policies and create approval requests
+    from app.services.policy_service import list_policies
+    active_policies = [p for p in await list_policies(session, agreement.merchant_id) if p.is_active]
+    
+    if not active_policies:
+        raise ValueError("No active policy found for merchant")
+        
+    active_policy = active_policies[0]
+    context = PolicyEvaluationContext(
+        merchant_id=agreement.merchant_id,
+        policy_id=active_policy.id,
+        minimum_price=active_policy.minimum_price,
+        maximum_discount_percent=active_policy.maximum_discount_percent,
+        maximum_autonomous_transaction=active_policy.maximum_autonomous_transaction,
+        human_approval_required=active_policy.human_approval_required
+    )
+    
+    validated_agreement = await validate_agreement(session, agreement.id, context)
+    return validated_agreement
 
 
 async def validate_agreement(

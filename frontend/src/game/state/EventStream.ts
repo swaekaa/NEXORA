@@ -242,6 +242,7 @@ export class LiveEventStream implements NegotiationEventStream {
                id: "terminal-" + negotiation.id,
                timestamp: new Date().toISOString(),
                type: negotiation.state === "accepted" ? "agreement_created" : "negotiation_failed",
+               state: negotiation.state === "accepted" ? "deal_complete" : "failed",
                isHistorical: this.isInitialFetch,
             };
             this.callbacks.forEach(cb => cb(terminalEvent));

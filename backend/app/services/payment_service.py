@@ -162,7 +162,7 @@ async def initiate_payment(
         # Razorpay explicitly failed. We must release the reservation immediately.
         await release_reservation(session, agreement_id)
         await session.commit()
-        raise PaymentServiceError("Failed to initiate Razorpay order") from e
+        raise PaymentServiceError(f"Failed to initiate Razorpay order: {str(e)}") from e
 
     # Insert into DB
     payment = Payment(

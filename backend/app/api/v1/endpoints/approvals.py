@@ -71,6 +71,10 @@ async def approve_request(
             # Default fallback for testing if none provided
             actor_id = merchant_id
         approval = await approval_service.approve(session, approval_id, merchant_id, actor_id)
+        
+        from app.services.agreement_service import manually_approve_agreement
+        await manually_approve_agreement(session, approval.agreement_id)
+        
         return approval
     except ResourceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

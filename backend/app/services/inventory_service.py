@@ -51,7 +51,8 @@ async def reserve_inventory(session: AsyncSession, agreement_id: uuid.UUID) -> I
     if existing:
         if existing.status == ReservationStatus.RESERVED.value:
             return existing
-        raise ReservationStateError(f"Reservation already exists in state: {existing.status}")
+        if existing.status not in (ReservationStatus.RELEASED.value, ReservationStatus.EXPIRED.value):
+            raise ReservationStateError(f"Reservation already exists in state: {existing.status}")
 
     # 2. Fetch Agreement
     result = await session.execute(select(Agreement).where(Agreement.id == agreement_id))
@@ -92,18 +93,22 @@ async def reserve_inventory(session: AsyncSession, agreement_id: uuid.UUID) -> I
     if update_result.rowcount == 0:
         raise InsufficientInventoryError(f"Insufficient inventory for product {product_id}")
 
-    # 5. Create Reservation Record
     expires_at = utcnow() + timedelta(minutes=settings.INVENTORY_RESERVATION_TTL_MINUTES)
     
-    reservation = InventoryReservation(
-        agreement_id=agreement_id,
-        product_id=product_id,
-        quantity=qty,
-        status=ReservationStatus.RESERVED.value,
-        expires_at=expires_at
-    )
-    
-    session.add(reservation)
+    if existing:
+        existing.status = ReservationStatus.RESERVED.value
+        existing.expires_at = expires_at
+        session.add(existing)
+        reservation = existing
+    else:
+        reservation = InventoryReservation(
+            agreement_id=agreement_id,
+            product_id=product_id,
+            quantity=qty,
+            status=ReservationStatus.RESERVED.value,
+            expires_at=expires_at
+        )
+        session.add(reservation)
     
     await record_event(
         session=session,

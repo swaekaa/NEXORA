@@ -144,10 +144,7 @@ from app.models.negotiation_message import SenderType, MessageType
 from app.schemas.negotiation import NegotiationMessagePayload
 from app.services.agreement_service import create_agreement_from_negotiation
 
-# Phase 12 Placeholder
-async def create_approval_request(*args, **kwargs):
-    pass
-
+# Removed mock create_approval_request, handled in agreement_service
 async def submit_decision_node(state: MerchantAgentState, config: RunnableConfig) -> dict:
     """
     Persists the final ALLOWED decision (ACCEPT, COUNTER, REJECT) to the NegotiationService.
@@ -240,9 +237,6 @@ async def request_approval_node(state: MerchantAgentState, config: RunnableConfi
             content=action.reason
         )
         agreement = await create_agreement_from_negotiation(session, intent.negotiation_id)
-        from app.models.agreement import AgreementStatus
-        agreement.status = AgreementStatus.PENDING_APPROVAL.value
-        session.add(agreement)
     elif action and action.action == MerchantActionType.COUNTER_PROPOSAL:
         payload = NegotiationMessagePayload(
             product_id=intent.product_id,
@@ -262,14 +256,5 @@ async def request_approval_node(state: MerchantAgentState, config: RunnableConfi
             payload=payload
         )
 
-    await create_approval_request(
-        session=session,
-        merchant_id=intent.merchant_id,
-        approval_type="POLICY_OVERRIDE",
-        entity_id=intent.negotiation_id,
-        requested_by="Merchant Agent",
-        reason="Policy Engine flagged this proposal for human review."
-    )
-    
     logger.info(f"MERCHANT_RUNNER_RESPONSE_PERSISTED_WITH_APPROVAL | negotiation_id={intent.negotiation_id}")
     return {"status": "completed"}

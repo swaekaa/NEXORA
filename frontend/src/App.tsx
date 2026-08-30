@@ -6,6 +6,7 @@ import MerchantDashboard from './pages/MerchantDashboard';
 import AgreementDetail from './pages/AgreementDetail';
 import PolicyPage from './pages/PolicyPage';
 import AuditTrailPage from './pages/AuditTrailPage';
+import DealReport from './pages/DealReport';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
           <Route path="negotiations/:id" element={<NegotiationDetail />} />
           <Route path="deals" element={<MerchantDashboard />} />
           <Route path="deals/:id" element={<AgreementDetail />} />
+          <Route path="deals/:agreementId/report" element={<DealReport />} />
           <Route path="policies" element={<PolicyPage />} />
           <Route path="audit" element={<AuditTrailPage />} />
         </Route>

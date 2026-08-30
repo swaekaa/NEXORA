@@ -29,11 +29,10 @@ async def create_approval_request(
     Creates an approval request for an agreement.
     This must ONLY be called internally when PolicyEngine returns HUMAN_APPROVAL_REQUIRED.
     """
-    # Check if a pending one already exists
+    # Check if ANY one already exists (idempotency)
     result = await session.execute(
         sa.select(ApprovalRequest).where(
-            ApprovalRequest.agreement_id == agreement.id,
-            ApprovalRequest.status == ApprovalStatus.PENDING
+            ApprovalRequest.agreement_id == agreement.id
         )
     )
     existing = result.scalar_one_or_none()

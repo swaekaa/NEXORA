@@ -6,7 +6,10 @@ import { useNegotiationSession } from '../hooks/useNegotiationSession';
 
 export default function MerchantDashboard() {
   const [agreements, setAgreements] = useState<Agreement[]>([]);
+  const [approvals, setApprovals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingPaymentId, setProcessingPaymentId] = useState<string | null>(null);
+  const [processingApprovalId, setProcessingApprovalId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { activeNegotiationId } = useNegotiationSession();
 
@@ -15,8 +18,12 @@ export default function MerchantDashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const data = await api.agreements.listForMerchant(merchant_id);
+        const [data, approvalData] = await Promise.all([
+           api.agreements.listForMerchant(merchant_id),
+           api.approvals.list(merchant_id)
+        ]);
         setAgreements(data);
+        setApprovals(approvalData.filter((a: any) => a.status === 'pending'));
       } catch (err) {
         console.error(err);
       } finally {
@@ -25,6 +32,89 @@ export default function MerchantDashboard() {
     }
     load();
   }, []);
+
+  const handleDownloadReport = (e: React.MouseEvent, dealId: string) => {
+    e.stopPropagation();
+    window.open(`/deals/${dealId}/report`, '_blank');
+  };
+
+  const handleApprove = async (approvalId: string) => {
+    try {
+       setProcessingApprovalId(approvalId);
+       await api.approvals.approve(merchant_id, approvalId);
+       // Refresh lists
+       const [data, approvalData] = await Promise.all([
+          api.agreements.listForMerchant(merchant_id),
+          api.approvals.list(merchant_id)
+       ]);
+       setAgreements(data);
+       setApprovals(approvalData.filter((a: any) => a.status === 'pending'));
+    } catch (e) {
+       console.error(e);
+       alert("Failed to approve");
+    } finally {
+       setProcessingApprovalId(null);
+    }
+  };
+
+  const handleReject = async (approvalId: string) => {
+    try {
+       setProcessingApprovalId(approvalId);
+       await api.approvals.reject(merchant_id, approvalId, "Merchant rejected the deal");
+       // Refresh lists
+       const [data, approvalData] = await Promise.all([
+          api.agreements.listForMerchant(merchant_id),
+          api.approvals.list(merchant_id)
+       ]);
+       setAgreements(data);
+       setApprovals(approvalData.filter((a: any) => a.status === 'pending'));
+    } catch (e) {
+       console.error(e);
+       alert("Failed to reject");
+    } finally {
+       setProcessingApprovalId(null);
+    }
+  };
+
+  const handlePayNow = async (e: React.MouseEvent, deal: Agreement) => {
+    e.stopPropagation();
+    try {
+      setProcessingPaymentId(deal.id);
+      const paymentInfo = await api.payments.initiate(deal.id);
+      
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TUpL4wSvURspvK',
+        amount: paymentInfo.amount_paise,
+        currency: paymentInfo.currency,
+        name: "NEXORA",
+        description: "Deal Payment - " + deal.id.split('-')[0],
+        order_id: paymentInfo.razorpay_order_id,
+        handler: function (response: any) {
+          alert('PAYMENT SUBMITTED. Verifying via backend webhook...');
+          // Refresh list after a few seconds to let webhook process
+          setTimeout(() => {
+             api.agreements.listForMerchant(merchant_id).then(setAgreements).finally(() => setProcessingPaymentId(null));
+          }, 3000);
+        },
+        prefill: { name: "Nexora Buyer", email: "buyer@nexora.ai" },
+        theme: { color: "#333333" },
+        modal: { ondismiss: function() { setProcessingPaymentId(null); } }
+      };
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (response: any){
+          alert("Payment failed: " + (response.error?.description || "Unknown error"));
+          setProcessingPaymentId(null);
+      });
+      rzp.open();
+    } catch (err: any) {
+      console.error(err);
+      let errMsg = 'PAYMENT UNAVAILABLE';
+      if (err.message && err.message.includes('blocked')) errMsg = 'PAYMENT BLOCKED: ' + err.message;
+      else if (err.message) errMsg = err.message;
+      alert(errMsg);
+      setProcessingPaymentId(null);
+    }
+  };
 
   return (
     <div className="w-full h-full pt-24 px-8 pb-8 overflow-y-auto custom-scrollbar">
@@ -51,6 +141,65 @@ export default function MerchantDashboard() {
               <span className="font-bold font-sans text-[#333333] uppercase tracking-widest text-lg">● NEGOTIATION IN PROGRESS</span>
             </div>
             <span className="font-bold text-[#333333] font-mono tracking-widest">VIEW OFFICE →</span>
+          </div>
+        )}
+
+        {!loading && approvals.length > 0 && (
+          <div className="mb-12">
+            <h2 className="text-xl font-bold tracking-widest text-[#D9534F] mb-4 uppercase flex items-center gap-2">
+              <span className="animate-pulse">●</span> PENDING APPROVALS
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {approvals.map(approval => {
+                const agreement = agreements.find(a => a.id === approval.agreement_id);
+                return (
+                  <div key={approval.id} className="bg-[#FFFDF7] border-4 border-[#D9534F] p-5 shadow-[4px_4px_0_0_rgba(217,83,79,1)]">
+                    <div className="flex justify-between items-center border-b-2 border-dashed border-[#D9534F]/30 pb-3 mb-3">
+                      <span className="font-bold font-mono text-xs uppercase tracking-widest text-[#D9534F]">HUMAN APPROVAL REQUIRED</span>
+                      <span className="text-xs font-mono text-[#888888]">{new Date(approval.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div className="font-mono text-sm space-y-2 mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-[#888888]">Buyer</span>
+                        <span className="font-bold text-right">{agreement?.buyer_id.split('-')[0]}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#888888]">Product</span>
+                        <span className="font-bold text-right truncate max-w-[150px]">{agreement?.product_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#888888]">Quantity</span>
+                        <span className="font-bold">{agreement?.quantity} Units</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#888888]">Deal Total</span>
+                        <span className="font-bold text-lg">₹{Number(agreement?.total_amount).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#888888]">Reason</span>
+                        <span className="text-[#D9534F] font-bold text-right max-w-[200px] text-xs leading-tight mt-1">{approval.reason}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <button 
+                        onClick={() => handleApprove(approval.id)}
+                        disabled={processingApprovalId === approval.id}
+                        className="flex-1 bg-[#5CB85C] text-[#111111] border-2 border-[#111111] py-2 font-bold uppercase tracking-widest text-xs shadow-[2px_2px_0_0_rgba(17,17,17,1)] hover:bg-[#4cae4c] active:translate-y-px active:shadow-none disabled:opacity-50"
+                      >
+                        [ APPROVE ]
+                      </button>
+                      <button 
+                        onClick={() => handleReject(approval.id)}
+                        disabled={processingApprovalId === approval.id}
+                        className="flex-1 bg-[#D9534F] text-white border-2 border-[#111111] py-2 font-bold uppercase tracking-widest text-xs shadow-[2px_2px_0_0_rgba(17,17,17,1)] hover:bg-[#c9302c] active:translate-y-px active:shadow-none disabled:opacity-50"
+                      >
+                        [ REJECT ]
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -98,13 +247,34 @@ export default function MerchantDashboard() {
                     <div className="text-xl font-bold text-[#333333]">₹{deal.total_amount}</div>
                   </div>
                   
-                  <div className="pt-4 border-t-[3px] border-[#333333] flex justify-between items-center">
-                    <span className="text-[10px] text-[#888888]">
-                      {new Date(deal.created_at).toLocaleDateString()}
-                    </span>
-                    <span className="text-xs font-bold text-[#333333] group-hover:text-[#D9534F] transition-colors">
-                      VIEW DETAILS →
-                    </span>
+                  <div className="pt-4 border-t-[3px] border-[#333333] flex flex-col gap-2">
+                    <button 
+                      onClick={(e) => handleDownloadReport(e, deal.id)}
+                      className="w-full bg-[#111111] text-white py-2 font-bold uppercase tracking-widest text-xs hover:bg-[#333333]"
+                    >
+                      [ VIEW REPORT ]
+                    </button>
+
+                    {deal.status === 'payment_captured' ? (
+                       <div className="w-full bg-[#EAE8DD] text-[#5CB85C] border-2 border-[#5CB85C] py-2 font-bold uppercase tracking-widest text-xs flex justify-center items-center">
+                         [ PAYMENT CONFIRMED ]
+                       </div>
+                    ) : deal.status === 'pending_approval' ? (
+                       <button 
+                         disabled={true}
+                         className="w-full bg-[#F0AD4E] text-[#111111] border-2 border-[#111111] py-2 font-bold uppercase tracking-widest text-xs shadow-[2px_2px_0_0_rgba(17,17,17,1)] disabled:opacity-50"
+                       >
+                         [ REQUIRES APPROVAL ]
+                       </button>
+                    ) : (
+                       <button 
+                         onClick={(e) => handlePayNow(e, deal)}
+                         disabled={processingPaymentId === deal.id}
+                         className="w-full bg-[#5CB85C] text-[#111111] border-2 border-[#111111] py-2 font-bold uppercase tracking-widest text-xs shadow-[2px_2px_0_0_rgba(17,17,17,1)] hover:bg-[#4cae4c] active:translate-y-px active:shadow-none disabled:opacity-50"
+                       >
+                         {processingPaymentId === deal.id ? '[ INITIALIZING... ]' : '[ PAY NOW ]'}
+                       </button>
+                    )}
                   </div>
                 </div>
               </div>

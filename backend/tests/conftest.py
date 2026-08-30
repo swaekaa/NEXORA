@@ -69,16 +69,6 @@ async def client(app) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest_asyncio.fixture(autouse=True)
 async def cleanup_database_pool():
-    """
-    Gracefully dispose the global database engine pool at the end of each test.
-    Because tests run in isolated function-scoped event loops, the engine pool 
-    must be disposed before the test's event loop closes. This guarantees 
-    that asyncpg connections are cleanly terminated in the active loop.
-    """
     yield
-    from app.database.connection import engine
-    await engine.dispose()
-    
-    # Windows ProactorEventLoop requires a brief moment to flush SSL/asyncpg sockets
-    import asyncio
-    await asyncio.sleep(0.250)
+    # No manual dispose here anymore. It causes event loop closed errors with auto mode.
+    pass

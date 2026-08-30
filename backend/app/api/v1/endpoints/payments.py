@@ -51,5 +51,6 @@ async def initiate_payment_endpoint(
     except PaymentServiceError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        # Avoid leaking unhandled error messages, log instead
-        raise HTTPException(status_code=500, detail="Internal server error during payment initiation")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
