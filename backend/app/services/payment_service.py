@@ -115,7 +115,7 @@ async def initiate_payment(
             
     # If ALLOW, or HUMAN_APPROVAL_REQUIRED with APPROVED request -> Proceed
     
-    if agreement.status not in (AgreementStatus.VALIDATED.value, AgreementStatus.APPROVED.value):
+    if agreement.status not in (AgreementStatus.VALIDATED.value, AgreementStatus.APPROVED.value, AgreementStatus.PAYMENT_INITIATED.value):
         raise PaymentServiceError(f"Agreement is not ready for payment. Status: {agreement.status}")
         
     # 2. Convert to paise

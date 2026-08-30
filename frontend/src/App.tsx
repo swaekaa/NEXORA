@@ -19,10 +19,10 @@ export default function App() {
           <Route path="negotiations/:id" element={<NegotiationDetail />} />
           <Route path="deals" element={<MerchantDashboard />} />
           <Route path="deals/:id" element={<AgreementDetail />} />
-          <Route path="deals/:agreementId/report" element={<DealReport />} />
           <Route path="policies" element={<PolicyPage />} />
           <Route path="audit" element={<AuditTrailPage />} />
         </Route>
+        <Route path="/deals/:agreementId/report" element={<DealReport />} />
       </Routes>
     </BrowserRouter>
   );

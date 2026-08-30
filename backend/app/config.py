@@ -47,9 +47,10 @@ class Settings(BaseSettings):
     RAZORPAY_WEBHOOK_SECRET: str = ""
 
     # ── LLM (Phase 5+) ────────────────────────────────────────────────────────
-    GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-3.7-flash"  # Verified stable structured output model
-    LLM_API_KEY: str = "" # Fallback for backward compatibility
+    AZURE_OPENAI_ENDPOINT: str = ""
+    AZURE_OPENAI_API_KEY: str = ""
+    AZURE_OPENAI_DEPLOYMENT_NAME: str = ""
+    AZURE_OPENAI_API_VERSION: str = "2024-02-15-preview"
 
     # ── CORS ──────────────────────────────────────────────────────────────────
     CORS_ORIGINS: list[str] = [

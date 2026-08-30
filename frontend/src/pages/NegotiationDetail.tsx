@@ -151,15 +151,15 @@ export default function NegotiationDetail() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   // State for buyer constraints
-  const [maxBudget, setMaxBudget] = useState('1500000');
-  const [quantity, setQuantity] = useState('100');
+  const [maxBudget, setMaxBudget] = useState('450000');
+  const [quantity, setQuantity] = useState('10');
   const [requirements, setRequirements] = useState('Must include 1 year warranty. Delivery within 14 days.');
 
   // State for merchant policy
   const [minPrice, setMinPrice] = useState('10000');
   const [maxDiscount, setMaxDiscount] = useState('20');
   const [maxAutonomousTransaction, setMaxAutonomousTransaction] = useState('500000');
-  const [maxRounds, setMaxRounds] = useState('5');
+  const [maxRounds, setMaxRounds] = useState('2');
   const [humanApproval, setHumanApproval] = useState(false);
 
   useEffect(() => {
@@ -395,7 +395,13 @@ export default function NegotiationDetail() {
                     </div>
                   </div>
 
-                  <div className="mt-8 pt-8 border-t-2 border-[#333333]/20 flex justify-end">
+                  <div className="mt-8 pt-8 border-t-2 border-[#333333]/20 flex justify-center gap-4">
+                    <button 
+                      onClick={startDemo}
+                      className="bg-[#EAE8DD] text-[#333333] border-2 border-[#333333] px-8 py-3 font-bold tracking-widest uppercase hover:bg-black/5 shadow-[4px_4px_0_0_rgba(51,51,51,1)] transition-transform active:translate-y-1 active:shadow-none"
+                    >
+                      WATCH DEMO
+                    </button>
                     <button 
                       onClick={startLive}
                       className="bg-[#D9534F] text-white border-2 border-[#333333] px-8 py-3 font-bold tracking-widest uppercase hover:bg-[#c9302c] shadow-[4px_4px_0_0_rgba(51,51,51,1)] transition-transform active:translate-y-1 active:shadow-none"
@@ -411,7 +417,9 @@ export default function NegotiationDetail() {
         </div>
 
         {/* Bottom Timeline Section */}
-        <BottomSection startDemo={startDemo} simulationMode={simulationMode} />
+        {simulationMode !== 'setup' && (
+          <BottomSection startDemo={startDemo} simulationMode={simulationMode} />
+        )}
       </GameProvider>
       ) : null}
     </div>
@@ -502,14 +510,6 @@ function BottomSection({ startDemo, simulationMode }: { startDemo: () => void, s
         <span className="font-extrabold text-lg uppercase tracking-widest text-[#333333]">
           NEGOTIATION TIMELINE GRAPH // ROUND {state.roundCount}
         </span>
-        {simulationMode === 'setup' && (
-          <button 
-             onClick={startDemo}
-             className="bg-[#333333] text-white border-2 border-[#333333] px-4 py-1 text-[10px] font-bold tracking-widest uppercase hover:bg-[#111111] pointer-events-auto flex items-center gap-2 shadow-[2px_2px_0_0_rgba(17,17,17,1)] active:translate-y-px active:shadow-none transition-transform"
-          >
-             WATCH DEMO <Play size={10} className="fill-white" />
-          </button>
-        )}
       </div>
 
       <div ref={timelineRef} className="flex-1 overflow-x-auto overflow-y-hidden relative custom-scrollbar pointer-events-auto scroll-smooth">

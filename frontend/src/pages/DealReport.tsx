@@ -3,8 +3,9 @@ import { useParams } from 'react-router-dom';
 import { api } from '../api';
 import { Agreement, NegotiationMessage, AuditEvent } from '../types/models';
 
-export default function DealReport() {
-  const { agreementId } = useParams<{ agreementId: string }>();
+export default function DealReport({ agreementId: propAgreementId, onClose }: { agreementId?: string, onClose?: () => void }) {
+  const params = useParams<{ agreementId: string }>();
+  const agreementId = propAgreementId || params.agreementId;
   
   const [agreement, setAgreement] = useState<Agreement | null>(null);
   const [messages, setMessages] = useState<NegotiationMessage[]>([]);
@@ -64,8 +65,8 @@ export default function DealReport() {
       <div className="min-h-screen bg-[#FFFDF7] flex flex-col items-center justify-center font-mono p-8">
         <h2 className="text-2xl font-bold text-[#D9534F] mb-4">DEAL COULD NOT BE LOADED</h2>
         <p className="text-[#333333]">{errorMsg}</p>
-        <button onClick={() => window.close()} className="mt-8 px-6 py-2 border-2 border-[#111111] hover:bg-[#EAE8DD] uppercase font-bold tracking-widest">
-          Close
+        <button onClick={() => onClose ? onClose() : window.close()} className="mt-8 px-6 py-2 border-2 border-[#111111] hover:bg-[#EAE8DD] uppercase font-bold tracking-widest">
+          {onClose ? "CLOSE" : "CLOSE TAB"}
         </button>
       </div>
     );
@@ -311,8 +312,8 @@ export default function DealReport() {
            <button onClick={() => window.print()} className="px-8 py-3 bg-[#111111] text-white font-bold uppercase tracking-widest text-sm hover:bg-gray-800 transition-colors">
               PRINT / SAVE AS PDF
            </button>
-           <button onClick={() => window.close()} className="px-8 py-3 border-2 border-[#111111] text-[#111111] font-bold uppercase tracking-widest text-sm hover:bg-gray-100 transition-colors">
-              CLOSE TAB
+           <button onClick={() => onClose ? onClose() : window.close()} className="px-8 py-3 border-2 border-[#111111] text-[#111111] font-bold uppercase tracking-widest text-sm hover:bg-gray-100 transition-colors">
+              {onClose ? "CLOSE REPORT" : "CLOSE TAB"}
            </button>
         </div>
 
