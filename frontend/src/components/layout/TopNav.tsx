@@ -4,19 +4,19 @@ import { NavLink } from 'react-router-dom';
 export default function TopNav() {
   const getNavColor = (path: string) => {
     switch (path) {
-      case '/office': return 'bg-[#5BC0DE] text-[#111111] border-[#111111]';
-      case '/deals': return 'bg-[#5CB85C] text-[#111111] border-[#111111]';
-      case '/agents': return 'bg-[#F0AD4E] text-[#111111] border-[#111111]';
-      case '/policies': return 'bg-[#9B59B6] text-white border-[#111111]';
-      case '/audit': return 'bg-[#D9534F] text-white border-[#111111]';
-      default: return 'bg-[#333333] text-white border-[#111111]';
+      case '/office': return 'border-[#5BC0DE] text-[#333333] shadow-[3px_3px_0_0_#5BC0DE] bg-[#5BC0DE]/10';
+      case '/deals': return 'border-[#5CB85C] text-[#333333] shadow-[3px_3px_0_0_#5CB85C] bg-[#5CB85C]/10';
+      case '/agents': return 'border-[#F0AD4E] text-[#333333] shadow-[3px_3px_0_0_#F0AD4E] bg-[#F0AD4E]/10';
+      case '/policies': return 'border-[#9B59B6] text-[#333333] shadow-[3px_3px_0_0_#9B59B6] bg-[#9B59B6]/10';
+      case '/audit': return 'border-[#D9534F] text-[#333333] shadow-[3px_3px_0_0_#D9534F] bg-[#D9534F]/10';
+      default: return 'border-[#333333] text-[#333333] shadow-[3px_3px_0_0_#333333] bg-[#333333]/10';
     }
   };
 
   const navLinkClass = (path: string) => ({ isActive }: { isActive: boolean }) =>
-    `h-full px-6 flex items-center border-b-[4px] font-bold uppercase tracking-widest text-[11px] transition-all duration-200 ${
+    `h-9 px-5 mx-1 flex items-center border-[2px] font-bold uppercase tracking-widest text-[11px] transition-all duration-200 ${
       isActive
-        ? `${getNavColor(path)} shadow-[inset_0_-4px_0_rgba(0,0,0,0.2)]`
+        ? `${getNavColor(path)}`
         : 'border-transparent text-[#888888] hover:text-[#111111] hover:bg-black/5'
     }`;
 

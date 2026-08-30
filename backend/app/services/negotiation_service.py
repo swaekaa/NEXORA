@@ -96,6 +96,17 @@ async def create_negotiation_with_proposal(
         payload=payload_dict
     )
     session.add(message)
+    
+    await record_event(
+        session=session,
+        event_type=AuditEventType.NEGOTIATION_PROPOSAL,
+        actor_type=SenderType.BUYER_AGENT.value,
+        actor_id=buyer_id,
+        negotiation_id=negotiation.id,
+        merchant_id=merchant_id,
+        metadata={"round": 1, "total_amount": str(payload.total_amount)}
+    )
+    
     await session.commit()
     await session.refresh(negotiation)
 
@@ -187,6 +198,16 @@ async def append_negotiation_message(
             negotiation_id=negotiation.id,
             merchant_id=negotiation.merchant_id,
             metadata={"round": negotiation.round_count, "reason": content or "No reason provided"}
+        )
+    elif message_type == MessageType.COUNTER_OFFER:
+        await record_event(
+            session=session,
+            event_type=AuditEventType.NEGOTIATION_COUNTER_OFFER,
+            actor_type=sender_type.value,
+            actor_id=uuid.UUID(sender_id) if sender_id != "SYSTEM" else None,
+            negotiation_id=negotiation.id,
+            merchant_id=negotiation.merchant_id,
+            metadata={"round": negotiation.round_count, "total_amount": str(payload.total_amount) if payload else "unknown"}
         )
         
     await session.commit()

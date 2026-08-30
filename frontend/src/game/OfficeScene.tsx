@@ -316,8 +316,8 @@ export const OfficeScene: React.FC = () => {
       if (s.movingDocument?.visible) {
         docContainer.visible = true;
         const getPos = (entity: string) => {
-          if (entity === 'buyer') return LAYOUT.BUYER_DESK;
-          if (entity === 'merchant') return LAYOUT.MERCHANT_DESK;
+          if (entity === 'buyer') return buyerPos;
+          if (entity === 'merchant') return merchantPos;
           if (entity === 'policy') return LAYOUT.POLICY_ENGINE;
           return { x: 0, y: 0 };
         };
@@ -331,8 +331,8 @@ export const OfficeScene: React.FC = () => {
            docContainer.x = start.x;
            docContainer.y = start.y;
         } else {
-           docContainer.x = Math.round(docContainer.x + dx * 0.05);
-           docContainer.y = Math.round(docContainer.y + dy * 0.05);
+           docContainer.x += dx * 0.05;
+           docContainer.y += dy * 0.05;
         }
 
         renderDoc(docG, s.movingDocument.type === 'result', s.policyStatus === 'approved');

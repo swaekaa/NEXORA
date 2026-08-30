@@ -282,6 +282,13 @@ export default function MerchantDashboard() {
                        >
                          [ REQUIRES APPROVAL ]
                        </button>
+                    ) : deal.status === 'validation_failed' || deal.status === 'payment_failed' || deal.status === 'cancelled' ? (
+                       <button 
+                         disabled={true}
+                         className="w-full bg-[#D9534F] text-white border-2 border-[#111111] py-2 font-bold uppercase tracking-widest text-xs shadow-[2px_2px_0_0_rgba(17,17,17,1)] disabled:opacity-50"
+                       >
+                         [ DEAL FAILED ]
+                       </button>
                     ) : (
                        <button 
                          onClick={(e) => handlePayNow(e, deal)}

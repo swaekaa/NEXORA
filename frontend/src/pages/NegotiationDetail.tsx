@@ -9,20 +9,27 @@ import { ActivityLog } from '../components/hud/ActivityLog';
 import { api } from '../api';
 import { useNegotiationSession } from '../hooks/useNegotiationSession';
 import { DealApprovedModal } from '../components/agreement/DealApprovedModal';
+import { DealFailedModal } from '../components/agreement/DealFailedModal';
 
 const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode: boolean, simulationMode: 'setup' | 'live' | 'demo', children?: React.ReactNode }) => {
   const { state } = useGame();
   const activityLogRef = useRef<HTMLDivElement>(null);
-  const [logWidth, setLogWidth] = useState(288); // Default 72rem
+  const [logWidth, setLogWidth] = useState(350); // Increased default width
   const isDragging = useRef(false);
   const { clearSession, activeNegotiationId } = useNegotiationSession();
   const [showModal, setShowModal] = useState(false);
+  const [showFailedModal, setShowFailedModal] = useState(false);
 
   useEffect(() => {
     if (state.dealStatus === 'complete') {
       const timer = setTimeout(() => {
          setShowModal(true);
       }, 3000); // 3 seconds delay for visual scene
+      return () => clearTimeout(timer);
+    } else if (state.dealStatus === 'failed') {
+      const timer = setTimeout(() => {
+         setShowFailedModal(true);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [state.dealStatus]);
@@ -113,7 +120,7 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
                <div className="absolute top-4 right-4 pointer-events-auto">
                  <button 
                    onClick={() => window.location.href = '/office?new=true'}
-                   className="bg-[#333333] text-white border-2 border-[#111111] px-4 py-2 font-bold text-xs tracking-widest uppercase hover:bg-[#111111] shadow-[2px_2px_0_0_rgba(51,51,51,1)] active:translate-y-px active:shadow-none transition-transform"
+                   className="bg-[#333333] text-white border-2 border-[#111111] px-4 py-2 font-bold text-base tracking-widest uppercase hover:bg-[#111111] shadow-[2px_2px_0_0_rgba(51,51,51,1)] active:translate-y-px active:shadow-none transition-transform"
                  >
                    + NEW NEGOTIATION
                  </button>
@@ -130,6 +137,17 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
           <DealApprovedModal 
             negotiationId={activeNegotiationId} 
             merchantId="987f6543-e21b-34c5-b678-426614174999" 
+            onDismiss={() => {
+               clearSession();
+               window.location.href = '/deals';
+            }} 
+          />
+        )}
+        
+        {/* Deal Failed Popup Overlay */}
+        {showFailedModal && activeNegotiationId && (
+          <DealFailedModal 
+            negotiationId={activeNegotiationId} 
             onDismiss={() => {
                clearSession();
                window.location.href = '/deals';

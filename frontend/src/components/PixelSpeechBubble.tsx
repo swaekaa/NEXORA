@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useGame } from '../game/GameContext';
 
 interface PixelSpeechBubbleProps {
   agent: "buyer" | "merchant";
@@ -19,15 +20,28 @@ export const PixelSpeechBubble: React.FC<PixelSpeechBubbleProps> = ({ agent, mes
 
   if (!shouldRender) return null;
 
+  const { state } = useGame();
+  
   // Determine alignment and colors
   const isBuyer = agent === 'buyer';
+  const agentState = isBuyer ? state.buyerState : state.merchantState;
   
+  const isAtMeetingTable = agentState === 'sending' || agentState === 'negotiating' || agentState === 'accepted';
+  
+  let leftOffset = isBuyer ? '- 162px' : '+ 462px';
+  let topOffset = '+ 60px';
+  
+  if (isAtMeetingTable) {
+      leftOffset = isBuyer ? '+ 87px' : '+ 212px';
+      topOffset = '+ 122px';
+  }
+
   // The canvas game world is strictly centered in the screen.
   // At 1.25x scale: 50 * 1.25 = 62px. 120 * 1.25 = 150px.
   const style: React.CSSProperties = {
     position: 'absolute',
-    left: isBuyer ? 'calc(50% - 62px)' : 'calc(50% + 62px)',
-    top: 'calc(50% + 150px)',
+    left: `calc(50% ${leftOffset})`,
+    top: `calc(50% ${topOffset})`,
     transform: 'translate(-50%, 0)', // Position BELOW the anchor point
     zIndex: 20,
     width: '450px', // Much wider to fit all text without scrolling
@@ -35,7 +49,7 @@ export const PixelSpeechBubble: React.FC<PixelSpeechBubbleProps> = ({ agent, mes
 
   const agentName = isBuyer ? "BUYER AGENT" : "MERCHANT AGENT";
   const agentColor = isBuyer ? "text-[#5BC0DE]" : "text-[#D9534F]";
-  const tailAlignment = isBuyer ? "left-[60%]" : "left-[40%]";
+  const tailAlignment = "left-[50%]";
 
   return (
     <div 

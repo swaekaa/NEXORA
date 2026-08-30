@@ -138,6 +138,7 @@ async def create_agreement_from_negotiation(
         event_type=AuditEventType.AGREEMENT_CREATED,
         actor_type="SYSTEM",
         agreement_id=agreement.id,
+        negotiation_id=agreement.negotiation_id,
         merchant_id=agreement.merchant_id,
         metadata={"total_amount": str(agreement.total_amount)}
     )
@@ -227,6 +228,7 @@ async def validate_agreement(
         event_type=event_type,
         actor_type="SYSTEM",
         agreement_id=agreement.id,
+        negotiation_id=agreement.negotiation_id,
         merchant_id=agreement.merchant_id,
         metadata={"policy_decision": result.decision.value}
     )
