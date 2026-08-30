@@ -201,6 +201,68 @@ async def initiate_payment(
     return payment
 
 
+async def verify_payment(
+    session: AsyncSession,
+    razorpay_order_id: str,
+    razorpay_payment_id: str,
+    razorpay_signature: str,
+    razorpay_client: RazorpayClientProtocol
+) -> Payment:
+    """
+    Synchronously verify a payment via the frontend return payload.
+    This acts as a primary truth pathway alongside webhooks.
+    """
+    # 1. Fetch payment by order ID with a row lock to prevent race conditions with webhooks
+    result = await session.execute(
+        select(Payment).where(Payment.razorpay_order_id == razorpay_order_id).with_for_update()
+    )
+    payment = result.scalar_one_or_none()
+    
+    if not payment:
+        raise PaymentServiceError("Payment not found for the given order ID")
+        
+    # 2. Idempotency Check: if the webhook already captured it, just return it.
+    if payment.status == PaymentStatus.CAPTURED.value:
+        # Prevent duplicate execution
+        return payment
+        
+    # 3. Cryptographic Verification
+    if not razorpay_client.verify_payment_signature(razorpay_order_id, razorpay_payment_id, razorpay_signature):
+        raise PaymentServiceError("Invalid payment signature")
+        
+    # 4. Update states (identical to the webhook capture flow)
+    payment.status = PaymentStatus.CAPTURED.value
+    payment.razorpay_payment_id = razorpay_payment_id
+    from app.database.base import utcnow
+    payment.captured_at = utcnow()
+    
+    result = await session.execute(
+        select(Agreement).where(Agreement.id == payment.agreement_id)
+    )
+    agreement = result.scalar_one_or_none()
+    
+    if agreement:
+        agreement.status = AgreementStatus.PAYMENT_CAPTURED.value
+        session.add(agreement)
+        
+        # Phase 8: Commit inventory reservation
+        await commit_reservation(session, agreement.id)
+        
+        await record_event(
+            session=session,
+            event_type=AuditEventType.PAYMENT_CAPTURED,
+            actor_type="SYSTEM",
+            agreement_id=agreement.id,
+            merchant_id=agreement.merchant_id,
+            metadata={"payment_id": str(payment.id), "razorpay_payment_id": razorpay_payment_id}
+        )
+        
+    session.add(payment)
+    await session.commit()
+    await session.refresh(payment)
+    return payment
+
+
 async def process_webhook_event(
     session: AsyncSession,
     raw_body: bytes,

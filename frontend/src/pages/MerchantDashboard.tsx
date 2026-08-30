@@ -89,12 +89,28 @@ export default function MerchantDashboard() {
         name: "NEXORA",
         description: "Deal Payment - " + deal.id.split('-')[0],
         order_id: paymentInfo.razorpay_order_id,
-        handler: function (response: any) {
-          alert('PAYMENT SUBMITTED. Verifying via backend webhook...');
-          // Refresh list after a few seconds to let webhook process
-          setTimeout(() => {
-             api.agreements.listForMerchant(merchant_id).then(setAgreements).finally(() => setProcessingPaymentId(null));
-          }, 3000);
+        handler: async function (response: any) {
+          try {
+            setProcessingPaymentId(deal.id + "_verifying"); // Use a pseudo-ID for verifying state
+            const result = await api.payments.verify(
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature
+            );
+            
+            if (result.status === 'captured') {
+               // Refresh list
+               const updated = await api.agreements.listForMerchant(merchant_id);
+               setAgreements(updated);
+            } else {
+               alert("Payment not captured: " + result.status);
+            }
+          } catch (err: any) {
+             console.error("Verification error:", err);
+             alert("Verification failed: " + err.message);
+          } finally {
+             setProcessingPaymentId(null);
+          }
         },
         prefill: { name: "Nexora Buyer", email: "buyer@nexora.ai" },
         theme: { color: "#333333" },
@@ -257,7 +273,7 @@ export default function MerchantDashboard() {
 
                     {deal.status === 'payment_captured' ? (
                        <div className="w-full bg-[#EAE8DD] text-[#5CB85C] border-2 border-[#5CB85C] py-2 font-bold uppercase tracking-widest text-xs flex justify-center items-center">
-                         [ PAYMENT CONFIRMED ]
+                         ACCEPTED · ✓ PAID
                        </div>
                     ) : deal.status === 'pending_approval' ? (
                        <button 
@@ -269,10 +285,12 @@ export default function MerchantDashboard() {
                     ) : (
                        <button 
                          onClick={(e) => handlePayNow(e, deal)}
-                         disabled={processingPaymentId === deal.id}
+                         disabled={processingPaymentId === deal.id || processingPaymentId === deal.id + "_verifying"}
                          className="w-full bg-[#5CB85C] text-[#111111] border-2 border-[#111111] py-2 font-bold uppercase tracking-widest text-xs shadow-[2px_2px_0_0_rgba(17,17,17,1)] hover:bg-[#4cae4c] active:translate-y-px active:shadow-none disabled:opacity-50"
                        >
-                         {processingPaymentId === deal.id ? '[ INITIALIZING... ]' : '[ PAY NOW ]'}
+                         {processingPaymentId === deal.id ? '[ INITIALIZING... ]' : 
+                          processingPaymentId === deal.id + "_verifying" ? '[ VERIFYING... ]' : 
+                          'ACCEPTED · PAYMENT PENDING (PAY NOW)'}
                        </button>
                     )}
                   </div>

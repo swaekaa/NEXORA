@@ -144,10 +144,31 @@ export const DealApprovedModal = ({ negotiationId, merchantId, onDismiss }: Deal
         name: "NEXORA",
         description: "Deal Payment - " + agreement.id.split('-')[0],
         order_id: paymentInfo.razorpay_order_id,
-        handler: function (response: any) {
-          // DO NOT TRUST FRONTEND CALLBACK FOR FINAL CONFIRMATION
-          // ENTER VERIFYING STATE TO POLL BACKEND
-          setPaymentStatus('verifying');
+        handler: async function (response: any) {
+          try {
+            setPaymentStatus('verifying');
+            const result = await api.payments.verify(
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature
+            );
+            
+            if (result.status === 'captured') {
+              setPaymentStatus('confirmed');
+              // refresh agreement to update UI
+              const updated = await api.agreements.get(agreement.id);
+              setAgreement(updated);
+            } else if (result.status === 'failed') {
+              setPaymentStatus('failed');
+              setErrorMsg('Payment verification failed.');
+            } else {
+               setPaymentStatus('verifying');
+            }
+          } catch (e: any) {
+             console.error("Verification error:", e);
+             setErrorMsg(e.message || 'Payment verification failed');
+             setPaymentStatus('failed');
+          }
         },
         prefill: {
           name: "Nexora Buyer",

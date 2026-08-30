@@ -10,6 +10,7 @@ export default function DealReport({ agreementId: propAgreementId, onClose }: { 
   const [agreement, setAgreement] = useState<Agreement | null>(null);
   const [messages, setMessages] = useState<NegotiationMessage[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [payment, setPayment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -26,6 +27,13 @@ export default function DealReport({ agreementId: propAgreementId, onClose }: { 
         const msgs = await api.negotiations.getMessages(ag.negotiation_id);
         if (!active) return;
         setMessages(msgs);
+        
+        try {
+          const payData = await api.payments.getByAgreement(ag.id);
+          if (active) setPayment(payData);
+        } catch (e) {
+          console.warn("Payment info not available or not initiated");
+        }
 
         // Try to fetch audit events
         try {
@@ -281,14 +289,43 @@ export default function DealReport({ agreementId: propAgreementId, onClose }: { 
         </div>
 
         {/* PAYMENT STATUS */}
-        <div className="mb-10 text-center font-mono p-6 bg-gray-50 border-2 border-gray-200">
-           <h3 className="font-bold uppercase text-[#888888] text-xs mb-2 tracking-widest">Payment Status</h3>
-           {agreement.status === 'payment_captured' ? (
-              <div className="text-2xl font-bold text-[#5CB85C]">PAID IN FULL</div>
-           ) : agreement.status === 'payment_initiated' ? (
-              <div className="text-2xl font-bold text-[#F0AD4E]">ORDER CREATED</div>
+        <div className="mb-10 font-mono p-6 bg-gray-50 border-2 border-[#111111]">
+           <h3 className="font-bold uppercase text-[#111111] text-sm mb-4 tracking-widest border-b border-gray-300 pb-2">Payment Details</h3>
+           
+           {payment && payment.status === 'captured' ? (
+             <div className="space-y-4 text-sm">
+                <div className="flex items-center gap-2 text-[#5CB85C] text-lg font-bold">
+                  ✓ PAID
+                </div>
+                <div className="text-[#888888] text-xs">Payment confirmed by Razorpay</div>
+                
+                <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200">
+                  <div>
+                    <div className="text-[#888888] text-xs font-bold tracking-widest uppercase mb-1">Amount Paid</div>
+                    <div className="font-bold">₹{(payment.amount_paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  </div>
+                  <div>
+                    <div className="text-[#888888] text-xs font-bold tracking-widest uppercase mb-1">Paid At</div>
+                    <div className="font-bold">{new Date(payment.paid_at).toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div className="text-[#888888] text-xs font-bold tracking-widest uppercase mb-1">Payment ID</div>
+                    <div className="font-bold text-[#333333] break-all">{payment.razorpay_payment_id}</div>
+                  </div>
+                  <div>
+                    <div className="text-[#888888] text-xs font-bold tracking-widest uppercase mb-1">Order ID</div>
+                    <div className="font-bold text-[#333333] break-all">{payment.razorpay_order_id}</div>
+                  </div>
+                </div>
+             </div>
+           ) : payment && payment.status === 'failed' ? (
+              <div className="text-xl font-bold text-[#D9534F] flex items-center gap-2">
+                ✕ PAYMENT FAILED
+              </div>
            ) : (
-              <div className="text-2xl font-bold text-[#111111]">NOT PAID</div>
+              <div className="text-xl font-bold text-[#F0AD4E] flex items-center gap-2">
+                ○ PAYMENT PENDING
+              </div>
            )}
         </div>
 

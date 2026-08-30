@@ -25,6 +25,9 @@ class RazorpayClientProtocol(Protocol):
         
     def verify_webhook_signature(self, raw_body: bytes, signature: str) -> bool:
         ...
+        
+    def verify_payment_signature(self, razorpay_order_id: str, razorpay_payment_id: str, razorpay_signature: str) -> bool:
+        ...
 
 
 class RazorpayClient:
@@ -64,6 +67,16 @@ class RazorpayClient:
         ).hexdigest()
         
         return hmac.compare_digest(expected_signature, signature)
+
+    def verify_payment_signature(self, razorpay_order_id: str, razorpay_payment_id: str, razorpay_signature: str) -> bool:
+        try:
+            return self.client.utility.verify_payment_signature({
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_signature': razorpay_signature
+            })
+        except Exception:
+            return False
 
 
 class FakeRazorpayClient:
@@ -105,6 +118,10 @@ class FakeRazorpayClient:
     def verify_webhook_signature(self, raw_body: bytes, signature: str) -> bool:
         # Mock logic: Accept if signature == "valid_signature", else reject
         return signature == "valid_signature"
+
+    def verify_payment_signature(self, razorpay_order_id: str, razorpay_payment_id: str, razorpay_signature: str) -> bool:
+        # Mock logic: Accept if signature == "valid_signature", else reject
+        return razorpay_signature == "valid_signature"
 
 
 # Dependency Injection Getter

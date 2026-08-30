@@ -46,5 +46,12 @@ export const api = {
       `/payments/initiate`,
       { method: 'POST', body: JSON.stringify({ agreement_id: agreementId }) }
     ),
+    verify: (orderId: string, paymentId: string, signature: string) => fetchApi<{ payment_id: string; razorpay_payment_id: string; razorpay_order_id: string; amount_paise: number; currency: string; status: string; paid_at: string | null }>(
+      `/payments/verify`,
+      { method: 'POST', body: JSON.stringify({ razorpay_order_id: orderId, razorpay_payment_id: paymentId, razorpay_signature: signature }) }
+    ),
+    getByAgreement: (agreementId: string) => fetchApi<{ payment_id: string; razorpay_payment_id: string; razorpay_order_id: string; amount_paise: number; currency: string; status: string; paid_at: string | null }>(
+      `/payments/agreement/${agreementId}`
+    ),
   }
 };
