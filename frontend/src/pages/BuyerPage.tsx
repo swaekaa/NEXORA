@@ -127,7 +127,7 @@ export default function AgentsPage() {
                 <div className="flex justify-between border-b-2 border-dashed border-[#333333]/20 pb-2">
                   <span className="text-[#888888] font-bold tracking-widest uppercase text-xs">MODEL TYPE</span>
                   <span className="text-[#333333] font-bold">
-                    {selectedAgent === 'policy' ? 'DETERMINISTIC' : 'LLM (GEMINI 2.0)'}
+                    {selectedAgent === 'policy' ? 'DETERMINISTIC' : 'LLM (GPT-4.1-MINI)'}
                   </span>
                 </div>
                 <div className="flex justify-between border-b-2 border-dashed border-[#333333]/20 pb-2">

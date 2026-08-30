@@ -1,7 +1,9 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 
 export default function TopNav() {
+  const location = useLocation();
+
   const getNavColor = (path: string) => {
     switch (path) {
       case '/office': return 'border-[#5BC0DE] text-[#333333] shadow-[3px_3px_0_0_#5BC0DE] bg-[#5BC0DE]/10';
@@ -13,12 +15,16 @@ export default function TopNav() {
     }
   };
 
-  const navLinkClass = (path: string) => ({ isActive }: { isActive: boolean }) =>
-    `h-9 px-5 mx-1 flex items-center border-[2px] font-bold uppercase tracking-widest text-[11px] transition-all duration-200 ${
-      isActive
+  const navLinkClass = (path: string) => ({ isActive }: { isActive: boolean }) => {
+    const isNegotiation = location.pathname.startsWith('/negotiations');
+    const actuallyActive = isActive || (path === '/office' && isNegotiation);
+    
+    return `h-9 px-5 mx-1 flex items-center border-[2px] font-bold uppercase tracking-widest text-[11px] transition-all duration-200 ${
+      actuallyActive
         ? `${getNavColor(path)}`
         : 'border-transparent text-[#888888] hover:text-[#111111] hover:bg-black/5'
     }`;
+  };
 
   return (
     <div className="absolute top-0 left-0 right-0 h-16 z-50 flex items-center justify-between px-6 bg-[#EAE8DD] border-b-[3px] border-[#111111] font-sans shadow-sm">

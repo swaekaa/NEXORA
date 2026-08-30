@@ -46,7 +46,7 @@ export const DealFailedModal = ({ negotiationId, onDismiss }: DealFailedModalPro
             className="w-full bg-[#111111] text-white border-2 border-[#111111] py-3 font-bold uppercase tracking-widest shadow-[4px_4px_0_0_rgba(17,17,17,1)] hover:bg-[#333333] active:translate-y-1 active:shadow-none transition-all" 
             onClick={onDismiss}
           >
-            RETURN TO DEALS ARCHIVE
+            CLOSE
           </button>
         </div>
       </div>

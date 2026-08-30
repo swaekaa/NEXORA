@@ -138,8 +138,7 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
             negotiationId={activeNegotiationId} 
             merchantId="987f6543-e21b-34c5-b678-426614174999" 
             onDismiss={() => {
-               clearSession();
-               window.location.href = '/deals';
+               setShowModal(false);
             }} 
           />
         )}
@@ -149,8 +148,7 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
           <DealFailedModal 
             negotiationId={activeNegotiationId} 
             onDismiss={() => {
-               clearSession();
-               window.location.href = '/deals';
+               setShowFailedModal(false);
             }} 
           />
         )}
