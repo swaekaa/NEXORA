@@ -102,8 +102,8 @@ export default function DealReport({ agreementId: propAgreementId, onClose }: { 
       rounds.push({ round: ++roundNum, ...currentRoundMessages });
   }
 
-  // Extract policy checks
-  const _policyCheckEvents = auditEvents.filter(e => e.event_type === 'POLICY_CHECK' || e.event_type === 'POLICY_DECISION' || e.event_type === 'EVALUATED');
+  // Extract policy checks (currently unused in UI)
+  // const _policyCheckEvents = auditEvents.filter(e => e.event_type === 'POLICY_CHECK' || e.event_type === 'POLICY_DECISION' || e.event_type === 'EVALUATED');
   
   // Extract approval
   const approvalEvents = auditEvents.filter(e => e.event_type === 'APPROVAL_REQUESTED' || e.event_type === 'APPROVAL_APPROVED' || e.event_type === 'APPROVAL_REJECTED');

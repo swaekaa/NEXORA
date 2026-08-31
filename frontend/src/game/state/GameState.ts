@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useReducer, useState } from 'react';
-import { NegotiationEvent, SimulationState, AgentState } from '../types';
+import { useEffect, useReducer } from 'react';
+import { NegotiationEvent, SimulationState } from '../types';
 import { NegotiationEventStream } from './EventStream';
 
 const initialState: SimulationState = {

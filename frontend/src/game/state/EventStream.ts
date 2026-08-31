@@ -13,7 +13,7 @@ export interface NegotiationEventStream {
 export class IdleEventStream implements NegotiationEventStream {
   subscribe(_callback: EventCallback) {}
   unsubscribe(_callback: EventCallback) {}
-  start(negotiationId?: string) {}
+  start(_negotiationId?: string) {}
   stop() {}
 }
 
@@ -60,7 +60,7 @@ export class MockEventStream implements NegotiationEventStream {
     this.callbacks = this.callbacks.filter(cb => cb !== callback);
   }
 
-  start(negotiationId?: string) {
+  start(_negotiationId?: string) {
     this.eventIndex = 0;
     this.nextEvent();
   }
@@ -235,14 +235,14 @@ export class LiveEventStream implements NegotiationEventStream {
       }
       
       // Check for terminal state based on Backend enum
-      if (negotiation.state === "accepted" || negotiation.state === "rejected" || negotiation.state === "expired") {
+      if (negotiation.state === "ACCEPTED" || negotiation.state === "REJECTED" || negotiation.state === "EXPIRED") {
           if (!this.processedMessageIds.has("terminal-" + negotiation.id)) {
             this.processedMessageIds.add("terminal-" + negotiation.id);
             const terminalEvent: NegotiationEvent = {
                id: "terminal-" + negotiation.id,
                timestamp: new Date().toISOString(),
-               type: negotiation.state === "accepted" ? "agreement_created" : "negotiation_failed",
-               state: negotiation.state === "accepted" ? "deal_complete" : "failed",
+               type: negotiation.state === "ACCEPTED" ? "agreement_created" : "negotiation_failed",
+               state: negotiation.state === "ACCEPTED" ? "deal_complete" : "blocked",
                isHistorical: this.isInitialFetch,
             };
             this.callbacks.forEach(cb => cb(terminalEvent));

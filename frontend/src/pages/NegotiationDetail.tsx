@@ -59,8 +59,7 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
     };
   }, []);
 
-  // Find agreed deal event for the popup
-  const _agreedEvent = state.events.find(e => e.type === 'agreement_created');
+  // _agreedEvent is unused right now
 
   return (
     <div className="w-full h-full overflow-hidden bg-[#EAE8DD] relative">
@@ -179,7 +178,6 @@ export default function NegotiationDetail() {
   const [humanApproval, setHumanApproval] = useState(false);
 
   useEffect(() => {
-    let _active = true;
     async function loadInitialState() {
       // Check query params
       const searchParams = new URLSearchParams(window.location.search);
@@ -212,7 +210,6 @@ export default function NegotiationDetail() {
     }
 
     return () => {
-      active = false;
       if (stream) stream.stop();
     };
   }, [id, activeNegotiationId]);
