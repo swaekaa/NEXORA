@@ -24,7 +24,7 @@ export interface Negotiation {
   buyer_id: string;
   merchant_id: string;
   product_id: string;
-  state: 'OFFER' | 'COUNTER_OFFER' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+  state: 'offer' | 'counter_offer' | 'accepted' | 'rejected' | 'expired';
   round_count: number;
   max_rounds: number;
   created_at: string;
@@ -45,7 +45,7 @@ export interface Agreement {
   payment_terms: string;
   delivery_days: number;
   warranty_months: number;
-  status: 'PENDING_VALIDATION' | 'VALIDATED' | 'PENDING_APPROVAL' | 'APPROVED' | 'VALIDATION_FAILED' | 'PAYMENT_INITIATED' | 'PAYMENT_CAPTURED' | 'PAYMENT_FAILED';
+  status: 'pending_validation' | 'validated' | 'pending_approval' | 'approved' | 'validation_failed' | 'payment_initiated' | 'payment_captured' | 'payment_failed' | 'expired' | 'cancelled';
   policy_decision: 'ALLOW' | 'REVIEW' | 'DENY' | 'HUMAN_APPROVAL_REQUIRED' | null;
   policy_checks: any[] | null;
   blocking_reason: string | null;
@@ -57,7 +57,7 @@ export interface ApprovalRequest {
   id: string;
   agreement_id: string;
   merchant_id: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
   policy_decision: string;
   reason: string;
   resolution_reason: string | null;

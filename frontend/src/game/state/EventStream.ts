@@ -235,14 +235,14 @@ export class LiveEventStream implements NegotiationEventStream {
       }
       
       // Check for terminal state based on Backend enum
-      if (negotiation.state === "ACCEPTED" || negotiation.state === "REJECTED" || negotiation.state === "EXPIRED") {
+      if (negotiation.state === "accepted" || negotiation.state === "rejected" || negotiation.state === "expired") {
           if (!this.processedMessageIds.has("terminal-" + negotiation.id)) {
             this.processedMessageIds.add("terminal-" + negotiation.id);
             const terminalEvent: NegotiationEvent = {
                id: "terminal-" + negotiation.id,
                timestamp: new Date().toISOString(),
-               type: negotiation.state === "ACCEPTED" ? "agreement_created" : "negotiation_failed",
-               state: negotiation.state === "ACCEPTED" ? "deal_complete" : "blocked",
+               type: negotiation.state === "accepted" ? "agreement_created" : "negotiation_failed",
+               state: negotiation.state === "accepted" ? "deal_complete" : "blocked",
                isHistorical: this.isInitialFetch,
             };
             this.callbacks.forEach(cb => cb(terminalEvent));

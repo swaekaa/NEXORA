@@ -272,18 +272,18 @@ export default function MerchantDashboard() {
                       [ VIEW REPORT ]
                     </button>
 
-                    {deal.status === 'PAYMENT_CAPTURED' ? (
+                    {deal.status === 'payment_captured' ? (
                        <div className="w-full bg-[#EAE8DD] text-[#5CB85C] border-2 border-[#5CB85C] py-2 font-bold uppercase tracking-widest text-xs flex justify-center items-center">
                          ACCEPTED · ✓ PAID
                        </div>
-                    ) : deal.status === 'PENDING_APPROVAL' ? (
+                    ) : deal.status === 'pending_approval' ? (
                        <button 
                          disabled={true}
                          className="w-full bg-[#F0AD4E] text-[#111111] border-2 border-[#111111] py-2 font-bold uppercase tracking-widest text-xs shadow-[2px_2px_0_0_rgba(17,17,17,1)] disabled:opacity-50"
                        >
                          [ REQUIRES APPROVAL ]
                        </button>
-                    ) : deal.status === 'VALIDATION_FAILED' || deal.status === 'PAYMENT_FAILED' || (deal.status as any) === 'CANCELLED' ? (
+                    ) : deal.status === 'validation_failed' || deal.status === 'payment_failed' || (deal.status as any) === 'cancelled' ? (
                        <button 
                          disabled={true}
                          className="w-full bg-[#D9534F] text-white border-2 border-[#111111] py-2 font-bold uppercase tracking-widest text-xs shadow-[2px_2px_0_0_rgba(17,17,17,1)] disabled:opacity-50"

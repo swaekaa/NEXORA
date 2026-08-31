@@ -110,8 +110,8 @@ export default function DealReport({ agreementId: propAgreementId, onClose }: { 
   
   // Inventory status (approximated from audit trail if no direct API)
   let inventoryStatus = 'RESERVED';
-  if (agreement.status === 'PAYMENT_CAPTURED') inventoryStatus = 'COMMITTED';
-  else if (agreement.status === 'PAYMENT_FAILED' || (agreement.status as any) === 'CANCELLED') inventoryStatus = 'RELEASED';
+  if (agreement.status === 'payment_captured') inventoryStatus = 'COMMITTED';
+  else if (agreement.status === 'payment_failed' || (agreement.status as any) === 'cancelled') inventoryStatus = 'RELEASED';
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8 font-sans print:p-0 print:bg-white text-sm">

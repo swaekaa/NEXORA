@@ -23,9 +23,9 @@ export const DealApprovedModal = ({ negotiationId, merchantId, onDismiss }: Deal
         if (data) {
           setAgreement(data);
           setLoading(false);
-          if (data.status === 'PAYMENT_CAPTURED') {
+          if (data.status === 'payment_captured') {
             setPaymentStatus('confirmed');
-          } else if (data.status === 'PAYMENT_INITIATED') {
+          } else if (data.status === 'payment_initiated') {
             setPaymentStatus('verifying');
           }
           
@@ -58,11 +58,11 @@ export const DealApprovedModal = ({ negotiationId, merchantId, onDismiss }: Deal
       intervalId = setInterval(async () => {
         try {
           const data = await api.agreements.get(agreement.id);
-          if (data.status === 'PAYMENT_CAPTURED') {
+          if (data.status === 'payment_captured') {
             setPaymentStatus('confirmed');
             setAgreement(data);
             clearInterval(intervalId);
-          } else if (data.status === 'PAYMENT_FAILED' || data.status === 'VALIDATION_FAILED' || (data.status as any) === 'CANCELLED') {
+          } else if (data.status === 'payment_failed' || data.status === 'validation_failed' || data.status === 'cancelled') {
             setPaymentStatus('failed');
             setAgreement(data);
             clearInterval(intervalId);
@@ -92,7 +92,7 @@ export const DealApprovedModal = ({ negotiationId, merchantId, onDismiss }: Deal
         try {
           const approvals = await api.approvals.list(merchantId);
           const current = approvals.find((ap: any) => ap.id === approvalRequest.id);
-          if (current && current.status !== 'PENDING') {
+          if (current && current.status !== 'pending') {
              setApprovalRequest(current);
              clearInterval(intervalId);
              const data = await api.agreements.get(agreement.id);
