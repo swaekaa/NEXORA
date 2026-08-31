@@ -57,13 +57,7 @@ export default function TopNav() {
           </NavLink>
         </div>
       </div>
-      {/* STATUS BADGE */}
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-3 bg-[#111111] px-4 py-1.5 border-2 border-[#111111] shadow-[3px_3px_0_0_rgba(92,184,92,0.4)]">
-           <div className="w-2.5 h-2.5 rounded-full bg-[#5CB85C] animate-pulse shadow-[0_0_8px_#5CB85C]"></div>
-           <span className="text-[#5CB85C] font-mono text-[10px] font-bold tracking-widest uppercase">NEXUS ACTIVE</span>
-        </div>
-      </div>
+
     </div>
   );
 }
