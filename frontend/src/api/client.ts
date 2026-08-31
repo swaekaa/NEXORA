@@ -1,4 +1,5 @@
-const BASE_URL = (import.meta as any).env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1';
+// @ts-ignore
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1';
 
 export class ApiError extends Error {
   constructor(public status: number, public message: string, public data?: any) {

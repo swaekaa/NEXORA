@@ -83,7 +83,8 @@ export default function MerchantDashboard() {
       const paymentInfo = await api.payments.initiate(deal.id);
       
       const options = {
-        key: (import.meta as any).env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TUpL4wSvURspvK',
+        // @ts-ignore
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TUpL4wSvURspvK',
         amount: paymentInfo.amount_paise,
         currency: paymentInfo.currency,
         name: "NEXORA",
