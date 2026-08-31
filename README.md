@@ -1,12 +1,19 @@
-# NEXORA — The Agreement Layer for AI Commerce
+<div align="center">
+  <img src="frontend/public/favicon.svg" width="100" />
+  <h1>NEXORA</h1>
+  <p><em>The Agreement Layer for AI Commerce</em></p>
 
-> *"The agreement layer for AI commerce."*
+  [![Razorpay AI Buildathon 2026](https://img.shields.io/badge/Razorpay-AI%20Buildathon%202026-blue)](https://razorpay.com/buildathon/)
+  [![Track](https://img.shields.io/badge/Track-AI%20Growth%20%26%20Agentic%20Commerce-green)]()
+  [![Phase](https://img.shields.io/badge/Phase-Deployed-brightgreen)]()
+  [![Python](https://img.shields.io/badge/Python-3.11%2B-blue)]()
+  [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688)]()
+</div>
 
-[![Razorpay AI Buildathon 2026](https://img.shields.io/badge/Razorpay-AI%20Buildathon%202026-blue)](https://razorpay.com/buildathon/)
-[![Track](https://img.shields.io/badge/Track-AI%20Growth%20%26%20Agentic%20Commerce-green)]()
-[![Phase](https://img.shields.io/badge/Phase-1%20Complete-brightgreen)]()
-[![Python](https://img.shields.io/badge/Python-3.11%2B-blue)]()
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688)]()
+---
+
+## 🎥 See it in Action
+### [▶️ Watch the Full Nexora Demo Video](frontend/public/demo.mp4)
 
 ---
 
@@ -14,7 +21,68 @@
 
 NEXORA is the missing infrastructure layer for autonomous AI commerce. It enables AI buyer agents and AI merchant agents to **negotiate**, **agree**, and **pay** — entirely autonomously — within strict, deterministic economic policies.
 
-### The Core Flow
+### The Foundational Principle
+
+> **"LLMs propose. Deterministic systems decide."**
+
+NEXORA is **not** "LLM calls payment API."  
+NEXORA **is** "LLM-powered agents operating inside deterministic economic policy boundaries."
+
+---
+
+## ✨ Visual Walkthrough
+
+### 1. Multi-Round Autonomous Negotiation
+![Timeline](frontend/public/timeline.gif)
+Watch AI agents negotiate in real-time, executing multi-round haggling over price, quantity, delivery days, and warranty. The negotiation engine guarantees structured output and bounded constraints.
+
+### 2. Immutable Commercial Agreements
+![Agreements](frontend/public/agreements.gif)
+Once consensus is reached, it is locked into an immutable Agreement object. If it violates the Merchant's strict policy floor, it requires human approval. Otherwise, it executes instantly.
+
+### 3. Cryptographic Audit Trails
+![Audit Trail](frontend/public/audit_trial.gif)
+Every single token, state transition, and signature is cryptographically verified and recorded. You have full visibility into the AI's "thought process" and commercial execution.
+
+---
+
+## 🤖 Meet the Agents
+
+NEXORA is powered by an ecosystem of intelligent, specialized agents:
+
+<div align="center">
+
+| <img src="frontend/public/jake.png" width="150"/> | <img src="frontend/public/holt.png" width="150"/> | <img src="frontend/public/policy_core.png" width="150"/> |
+|:---:|:---:|:---:|
+| **JAKE** | **HOLT** | **POLICY CORE** |
+| *Buyer Agent* | *Merchant Agent* | *Verification Engine* |
+| Optimized for Procurement | Veteran B2B Sales | Immutable State Enforcement |
+| Goal: Minimize Unit Price | Goal: Maximize Profit Margin | Goal: Validate Bounds |
+| Architecture: **LLM** | Architecture: **LLM** | Architecture: **Deterministic Code** |
+
+</div>
+
+### The Policy Core Dashboard
+![Policy Page](frontend/public/policy_page.png)
+The heart of NEXORA. The deterministic engine has a fully-fledged dashboard proving its active parameters, execution limits, and raw JSON configuration dump.
+
+---
+
+## Problem Statement
+
+In an agentic future, AI systems will negotiate and execute commercial transactions autonomously. Today's payment infrastructure has no answer for:
+
+- How does an AI buyer negotiate with an AI seller?
+- How does a merchant define what its AI agent is allowed to agree to?
+- How do we prevent an LLM from hallucinating financial terms?
+- How do we verify that the final payment matches what was agreed?
+- How do we audit every agent decision?
+
+**NEXORA answers all of these.**
+
+---
+
+## The Core Flow
 
 ```
 AI Buyer Agent
@@ -34,29 +102,6 @@ Webhook Verification   ← HMAC-SHA256, idempotent
 Settlement + Audit Trail
 ```
 
-### The Foundational Principle
-
-```
-LLMs propose.  Deterministic systems decide.
-```
-
-NEXORA is **not** "LLM calls payment API."  
-NEXORA **is** "LLM-powered agents operating inside deterministic economic policy boundaries."
-
----
-
-## Problem Statement
-
-In an agentic future, AI systems will negotiate and execute commercial transactions autonomously. Today's payment infrastructure has no answer for:
-
-- How does an AI buyer negotiate with an AI seller?
-- How does a merchant define what its AI agent is allowed to agree to?
-- How do we prevent an LLM from hallucinating financial terms?
-- How do we verify that the final payment matches what was agreed?
-- How do we audit every agent decision?
-
-NEXORA answers all of these.
-
 ---
 
 ## Tech Stack
@@ -67,43 +112,11 @@ NEXORA answers all of these.
 | **Config** | Pydantic Settings |
 | **Database** | PostgreSQL 15 · SQLAlchemy 2 (async) · Alembic |
 | **Payments** | Razorpay Test Mode (Orders API + Webhooks) |
-| **AI Agents** | LLM with structured tool calling (Phase 5+) |
-| **Frontend** | React · TypeScript · Vite (Phase 13) |
+| **AI Agents** | LangGraph · OpenAI/Anthropic Structured Output |
+| **Frontend** | React · TypeScript · Vite · TailwindCSS · PixiJS |
 | **Dev Tooling** | Docker · Docker Compose · pytest |
 
 ---
-
-## Implementation Status
-
-| Phase | Description | Status |
-|-------|-------------|--------|
-| Phase 0 | Architecture & Planning | ✅ Complete |
-| Phase 1 | Repository + Infrastructure | ✅ Complete |
-| Phase 2 | Database Schema + Models | ✅ Complete |
-| Phase 3 | Merchant Catalog API | ✅ Complete |
-| Phase 4 | Policy Engine | ✅ Complete |
-| Phase 5 | Buyer Agent | ✅ Complete |
-| Phase 6 | Merchant Agent | ✅ Complete |
-| Phase 7 | Negotiation Engine | ✅ Complete |
-| Phase 8 | Agreement Engine | ✅ Complete |
-| Phase 9 | Razorpay Integration | ✅ Complete |
-| Phase 10 | Webhooks | ✅ Complete |
-| Phase 11 | Audit Trail | ✅ Complete |
-| Phase 12 | Human Approvals | ✅ Complete |
-| Phase 13 | Frontend | ✅ Complete |
-| Phase 14 | Multi-Round Negotiation Demo | ✅ Complete |
-| Phase 15 | Deployment | ⬜ Pending |
-| Phase 16 | Demo Preparation | ⬜ Pending |
-
----
-
-## The Frontend & Multi-Round Negotiation
-
-NEXORA includes a polished React/Vite frontend that vividly demonstrates the Multi-Round Agent Negotiation:
-1. **Buyer Dashboard**: Allows a user to set an intent (budget, quantity, criteria). The Buyer Agent LangGraph runs, searches the catalog, and proposes an agreement.
-2. **Merchant Dashboard**: A command center to monitor all active negotiations, view completed agreements, and handle "HUMAN_APPROVAL_REQUIRED" overrides.
-3. **Live Negotiation View**: A real-time chat interface showing the multi-round back-and-forth between the Buyer and Merchant agents, enforcing a deterministic minimum 3-round negotiation before reaching an agreement.
-
 
 ## Quick Start
 
@@ -165,7 +178,7 @@ Visit `http://localhost:5173` to view the dashboards!
 
 ---
 
-## API Endpoints (Phase 1)
+## API Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -174,39 +187,6 @@ Visit `http://localhost:5173` to view the dashboards!
 | `GET` | `/docs` | Swagger UI |
 | `GET` | `/redoc` | ReDoc UI |
 | `GET` | `/openapi.json` | OpenAPI schema |
-
----
-
-## Running Tests
-
-```bash
-cd backend
-
-# All unit tests (no database required)
-pytest tests/unit/ -v
-
-# With coverage
-pytest tests/unit/ --cov=app --cov-report=term-missing
-
-# Full suite (requires DB)
-pytest -v
-```
-
----
-
-## Environment Variables
-
-Copy `.env.example` to `.env`. Required variables:
-
-| Variable | Phase Required | Description |
-|----------|---------------|-------------|
-| `DATABASE_URL` | 1 | PostgreSQL async DSN |
-| `RAZORPAY_KEY_ID` | 9 | Razorpay Test Mode Key ID |
-| `RAZORPAY_KEY_SECRET` | 9 | Razorpay Key Secret (never send to frontend) |
-| `RAZORPAY_WEBHOOK_SECRET` | 10 | Separate webhook signing secret |
-| `LLM_API_KEY` | 5 | OpenAI / Anthropic API key |
-
-See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for full reference.
 
 ---
 
@@ -224,11 +204,6 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for full reference.
 | [WEBHOOK_STRATEGY.md](docs/WEBHOOK_STRATEGY.md) | Idempotent webhook handling |
 | [FAILURE_HANDLING.md](docs/FAILURE_HANDLING.md) | All 7 failure scenarios |
 | [DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md) | Complete SQL schema |
-| [API_SPEC.md](docs/API_SPEC.md) | REST API reference |
-| [TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) | Testing approach |
-| [DEMO_SCENARIO.md](docs/DEMO_SCENARIO.md) | 5-minute demo script |
-| [RAZORPAY_INTEGRATION_NOTES.md](docs/RAZORPAY_INTEGRATION_NOTES.md) | Verified Razorpay API notes |
-| [SECURITY.md](docs/SECURITY.md) | Security rules |
 
 ---
 
