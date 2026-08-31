@@ -129,6 +129,10 @@ Once they reach an agreement, the terms are locked into an immutable Agreement o
 ![Audit Trail](./frontend/public/audit_trial.gif)
 Every single token, state transition, and signature is cryptographically verified and recorded. You get full visibility into exactly what the AI was thinking and how it executed the deal.
 
+### 4. Complete Transaction Reports
+![Reports](./frontend/public/report.gif)
+After settlement, NEXORA generates a comprehensive transaction report detailing the final terms, the specific policy rules that were satisfied, and the cryptographic signatures of both agents.
+
 ---
 
 ## 🤖 Meet the Agents
@@ -178,6 +182,28 @@ As we move into an agentic future, AI systems will inevitably start negotiating 
 | **AI Agents** | LangGraph · OpenAI/Anthropic Structured Output |
 | **Frontend** | React · TypeScript · Vite · TailwindCSS · PixiJS |
 | **Dev Tooling** | Docker · Docker Compose · pytest |
+
+---
+
+## 💳 The Razorpay Integration
+
+NEXORA treats Razorpay as the ultimate settlement layer. The integration is deeply embedded into the deterministic Policy Engine to guarantee that AI agents can never authorize funds without strict oversight.
+
+1. **Order Creation (Server-Side):** Once the Policy Core approves an agreement, the backend securely communicates with the Razorpay Orders API to generate a canonical `order_id` for the exact negotiated amount.
+2. **Checkout (Client-Side):** The generated Razorpay Payment Link is presented to the buyer in the React dashboard, utilizing the standard Razorpay Checkout flow.
+3. **Webhook Verification (Async):** Payment success is asynchronously verified via the `payment.captured` webhook. The payload is cryptographically verified using `HMAC-SHA256` to prevent spoofing.
+4. **Immutable Settlement:** Upon verification, the agreement transitions to a `PAID` state, concluding the autonomous transaction.
+
+---
+
+## 🚀 The Value Proposition for Razorpay
+
+As AI agents begin executing commerce on behalf of humans, the core problem shifts from *how to pay* to **how to trust an AI to pay**.
+
+NEXORA positions Razorpay as the foundational financial layer for the Agentic Web:
+- **New Revenue Streams:** B2B agent-to-agent negotiations represent billions in untapped transaction volume. Razorpay can power the settlement layer for this new paradigm.
+- **Risk Mitigation:** By enforcing strict, deterministic policies before calling the Razorpay API, we eliminate the massive liability of LLM hallucinations in financial transactions. 
+- **Developer Ecosystem:** Providing standard "Agentic Checkout" SDKs and Webhooks gives Razorpay a massive first-mover advantage in developer tooling for the AI commerce era.
 
 ---
 
