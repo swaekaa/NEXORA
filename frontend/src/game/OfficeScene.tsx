@@ -1,5 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import * as PIXI from 'pixi.js';
+
+// Set global scale mode for crisp pixel art
+PIXI.BaseTexture.defaultOptions.scaleMode = PIXI.SCALE_MODES.NEAREST;
 import { useGame } from './GameContext';
 import { LAYOUT } from './constants';
 import { SimulationState } from './types';
@@ -143,94 +146,35 @@ export const OfficeScene: React.FC = () => {
     gameWorld.addChild(buyerContainer);
     gameWorld.addChild(merchantContainer);
     
-    const buyerG = new PIXI.Graphics();
-    buyerContainer.addChild(buyerG);
-    const buyerName = new PIXI.Text('Jake', new PIXI.TextStyle({ fontFamily: 'sans-serif', fontSize: 10, fill: '#5BC0DE', fontWeight: 'bold', stroke: '#111111', strokeThickness: 2 }));
-    buyerName.anchor.set(0.5); buyerName.y = 35; buyerContainer.addChild(buyerName);
+    // Draw shadow for Buyer
+    const buyerBase = new PIXI.Graphics();
+    buyerBase.beginFill(0x000000, 0.2); buyerBase.lineStyle(0); buyerBase.drawEllipse(0, 32, 30, 8); buyerBase.endFill();
+    buyerContainer.addChild(buyerBase);
     
-    const merchantG = new PIXI.Graphics();
-    merchantContainer.addChild(merchantG);
-    const merchantName = new PIXI.Text('Holt', new PIXI.TextStyle({ fontFamily: 'sans-serif', fontSize: 10, fill: '#D9534F', fontWeight: 'bold', stroke: '#111111', strokeThickness: 2 }));
-    merchantName.anchor.set(0.5); merchantName.y = 35; merchantContainer.addChild(merchantName);
+    // Buyer Image Sprite (Doge)
+    const buyerSprite = PIXI.Sprite.from('/buyer.png');
+    buyerSprite.anchor.set(0.5, 0.85);
+    buyerSprite.width = 96;
+    buyerSprite.height = 96;
+    buyerContainer.addChild(buyerSprite);
 
-    // Dialogues moved to HTML DOM for crisp text rendering
-
-    const renderAgent = (g: PIXI.Graphics, color: number, isBuyer: boolean) => {
-      g.clear();
-      
-      const skinColor = isBuyer ? 0xFFDCB6 : 0xD2996C; // Light peach for buyer, darker tan for merchant
-      const shirtColor = color; // Use the passed agent color (cyan/red)
-      const hairColor = isBuyer ? 0x4E342E : 0x283593; // Dark brown for buyer, Deep blue/purple for merchant
-      
-      // Shadow
-      g.beginFill(0x000000, 0.2); g.lineStyle(0); g.drawRect(-24, 32, 48, 12); g.endFill();
-      
-      // Chair backrest (dark grey/black) - Keep it so they are still sitting
-      g.beginFill(0x222222); g.lineStyle(2, 0x111111);
-      g.drawRect(-16, -5, 32, 35);
-      g.endFill();
-
-      // Body (Shirt)
-      g.beginFill(shirtColor); g.lineStyle(2, 0x111111);
-      g.drawRect(-14, 10, 28, 18); // Small stubby body
-      g.endFill();
-
-      // Arms (Short sleeves)
-      g.beginFill(shirtColor); g.lineStyle(2, 0x111111);
-      g.drawRect(-18, 12, 4, 10); // left sleeve
-      g.drawRect(14, 12, 4, 10); // right sleeve
-      g.endFill();
-
-      // Hands
-      g.beginFill(skinColor); g.lineStyle(2, 0x111111);
-      g.drawRect(-18, 22, 4, 5);
-      g.drawRect(14, 22, 4, 5);
-      g.endFill();
-
-      // Head (Large boxy shape)
-      g.beginFill(skinColor); g.lineStyle(2, 0x111111);
-      g.drawRect(-14, -18, 28, 28);
-      g.endFill();
-
-      // Eyes (Vertical black rectangles, low on face like the reference)
-      g.beginFill(0x111111); g.lineStyle(0);
-      g.drawRect(-6, -4, 4, 6);
-      g.drawRect(4, -4, 4, 6);
-      
-      // Optional: tiny blush on cheeks
-      g.beginFill(0xFFB6C1, 0.5);
-      g.drawRect(-12, 2, 4, 3);
-      g.drawRect(10, 2, 4, 3);
-      g.endFill();
-
-      // Hair
-      g.beginFill(hairColor); g.lineStyle(2, 0x111111);
-      if (isBuyer) {
-        // Top-left reference style: messy top, slightly over forehead
-        g.drawRect(-16, -24, 32, 10); // Main top volume
-        g.drawRect(-16, -14, 6, 8);   // Left sideburn/overlap
-        g.drawRect(-4, -28, 10, 4);   // Little cowlick
-      } else {
-        // Top-right reference style: beanie / flat top hair
-        g.drawRect(-16, -22, 32, 12); // Main flat top
-        g.drawRect(-16, -10, 4, 8);  // Side 1
-        g.drawRect(12, -10, 4, 8);   // Side 2
-        
-        // Texture lines on hair/hat
-        g.beginFill(0x3949AB); g.lineStyle(0);
-        g.drawRect(-10, -20, 4, 10);
-        g.drawRect(2, -20, 4, 10);
-      }
-      g.endFill();
-
-      // Desk Nameplate (front)
-      g.beginFill(0x222222); g.lineStyle(2, 0x111111); 
-      g.drawRect(-25, 28, 50, 16); 
-      g.endFill();
-    };
+    const buyerName = new PIXI.Text('Jake', new PIXI.TextStyle({ fontFamily: 'sans-serif', fontSize: 16, fill: '#5BC0DE', fontWeight: '900', stroke: '#111111', strokeThickness: 4, letterSpacing: 1 }));
+    buyerName.anchor.set(0.5); buyerName.y = -105; buyerContainer.addChild(buyerName);
     
-    renderAgent(buyerG, 0x5BC0DE, true);
-    renderAgent(merchantG, 0xD9534F, false);
+    // Draw shadow for Merchant
+    const merchantBase = new PIXI.Graphics();
+    merchantBase.beginFill(0x000000, 0.2); merchantBase.lineStyle(0); merchantBase.drawEllipse(0, 32, 30, 8); merchantBase.endFill();
+    merchantContainer.addChild(merchantBase);
+
+    // Merchant Image Sprite (Cat)
+    const merchantSprite = PIXI.Sprite.from('/merchant.png');
+    merchantSprite.anchor.set(0.5, 0.85);
+    merchantSprite.width = 96;
+    merchantSprite.height = 96;
+    merchantContainer.addChild(merchantSprite);
+
+    const merchantName = new PIXI.Text('Holt', new PIXI.TextStyle({ fontFamily: 'sans-serif', fontSize: 16, fill: '#D9534F', fontWeight: '900', stroke: '#111111', strokeThickness: 4, letterSpacing: 1 }));
+    merchantName.anchor.set(0.5); merchantName.y = -105; merchantContainer.addChild(merchantName);
 
     // Initial agent positions
     let buyerPos = { ...LAYOUT.BUYER_DESK };

@@ -19,10 +19,7 @@ export default function AgentsPage() {
           >
             <div className="bg-[#5BC0DE]/10 p-6 flex flex-col items-center">
               <div className="w-24 h-24 bg-[#5BC0DE] mb-4 flex items-center justify-center border-[3px] border-[#333333] shadow-[2px_2px_0_0_rgba(51,51,51,1)]">
-                <div className="w-16 h-16 bg-[#FFDCB6] relative border-2 border-[#111111]">
-                   <div className="absolute top-4 left-3 w-3 h-4 bg-[#111111]"></div>
-                   <div className="absolute top-4 right-3 w-3 h-4 bg-[#111111]"></div>
-                </div>
+                <img src="/buyer.png" alt="Buyer Mascot" className="w-20 h-20 object-contain drop-shadow-md" style={{ imageRendering: 'pixelated' }} />
               </div>
               <h2 className="text-2xl font-bold text-[#333333] mb-1">JAKE</h2>
               <p className="text-[#888888] text-xs font-bold tracking-widest uppercase text-center">Buyer Agent<br/>Procurement Optimization</p>
@@ -40,10 +37,7 @@ export default function AgentsPage() {
           >
             <div className="bg-[#D9534F]/10 p-6 flex flex-col items-center">
               <div className="w-24 h-24 bg-[#D9534F] mb-4 flex items-center justify-center border-[3px] border-[#333333] shadow-[2px_2px_0_0_rgba(51,51,51,1)]">
-                <div className="w-16 h-16 bg-[#D2996C] relative border-2 border-[#111111]">
-                   <div className="absolute top-4 left-3 w-3 h-4 bg-[#111111]"></div>
-                   <div className="absolute top-4 right-3 w-3 h-4 bg-[#111111]"></div>
-                </div>
+                <img src="/merchant.png" alt="Merchant Mascot" className="w-20 h-20 object-contain drop-shadow-md" style={{ imageRendering: 'pixelated' }} />
               </div>
               <h2 className="text-2xl font-bold text-[#333333] mb-1">HOLT</h2>
               <p className="text-[#888888] text-xs font-bold tracking-widest uppercase text-center">Merchant Agent<br/>Sales & Policy Adherence</p>
@@ -61,9 +55,7 @@ export default function AgentsPage() {
           >
             <div className="bg-[#111111]/5 p-6 flex flex-col items-center">
               <div className="w-24 h-24 bg-[#EAE8DD] mb-4 flex items-center justify-center border-[3px] border-[#333333] shadow-[2px_2px_0_0_rgba(51,51,51,1)]">
-                 <div className="w-12 h-12 bg-[#111111] border-2 border-[#333333] flex items-center justify-center">
-                    <div className="w-4 h-4 bg-[#5CB85C] border border-[#111111] shadow-[0_0_0_1px_#5CB85C]"></div>
-                 </div>
+                 <img src="/policy.png" alt="Policy Mascot" className="w-20 h-20 object-contain drop-shadow-md" style={{ imageRendering: 'pixelated' }} />
               </div>
               <h2 className="text-2xl font-bold text-[#333333] mb-1">POLICY CORE</h2>
               <p className="text-[#888888] text-xs font-bold tracking-widest uppercase text-center">Verification Engine<br/>Immutable Deterministic</p>
@@ -97,16 +89,12 @@ export default function AgentsPage() {
                   selectedAgent === 'buyer' ? 'bg-[#5BC0DE]' : 
                   selectedAgent === 'merchant' ? 'bg-[#D9534F]' : 'bg-[#EAE8DD]'
                 }`}>
-                  {selectedAgent === 'policy' ? (
-                    <div className="w-12 h-12 bg-[#111111] border-2 border-[#333333] flex items-center justify-center">
-                      <div className="w-4 h-4 bg-[#5CB85C] border border-[#111111] shadow-[0_0_0_1px_#5CB85C]"></div>
-                    </div>
-                  ) : (
-                    <div className={`w-16 h-16 relative border-2 border-[#111111] ${selectedAgent === 'buyer' ? 'bg-[#FFDCB6]' : 'bg-[#D2996C]'}`}>
-                       <div className="absolute top-4 left-3 w-3 h-4 bg-[#111111]"></div>
-                       <div className="absolute top-4 right-3 w-3 h-4 bg-[#111111]"></div>
-                    </div>
-                  )}
+                  <img 
+                    src={selectedAgent === 'buyer' ? '/buyer.png' : selectedAgent === 'merchant' ? '/merchant.png' : '/policy.png'} 
+                    alt="Agent Mascot" 
+                    className="w-20 h-20 object-contain drop-shadow-md" 
+                    style={{ imageRendering: 'pixelated' }} 
+                  />
                 </div>
                 <div>
                   <h2 className="text-3xl font-bold text-[#333333] mb-1">
