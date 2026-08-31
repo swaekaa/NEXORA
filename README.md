@@ -14,12 +14,7 @@
 
 ## 🎥 See it in Action
 
-<div align="center">
-  <h3>
-    <a href="https://github.com/swaekaa/NEXORA/raw/main/frontend/public/demo.mp4">▶️ Click Here to Download and Watch the Full NEXORA Demo Video</a>
-  </h3>
-  <p><em>(GitHub does not support playing <code>.mp4</code> files directly from the repository tree. Click the link above to watch the full demo!)</em></p>
-</div>
+https://github.com/user-attachments/assets/2e55de6c-0073-46c1-9769-8819fc248d12
 
 ---
 
