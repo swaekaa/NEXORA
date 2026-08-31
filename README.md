@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="frontend/public/favicon.svg" width="100" />
+  <img src="./frontend/public/favicon.svg" width="100" />
   <h1>NEXORA</h1>
   <p><em>The Agreement Layer for AI Commerce</em></p>
 
@@ -13,46 +13,135 @@
 ---
 
 ## 🎥 See it in Action
-### [▶️ Watch the Full Nexora Demo Video](frontend/public/demo.mp4)
+
+<div align="center">
+  <video src="https://github.com/swaekaa/NEXORA/raw/main/frontend/public/demo.mp4" controls="controls" muted="muted" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></video>
+  <br/>
+  <em>If the video doesn't load, <a href="https://github.com/swaekaa/NEXORA/raw/main/frontend/public/demo.mp4">click here to download and watch it directly</a>.</em>
+</div>
 
 ---
 
 ## What Is NEXORA?
 
-NEXORA is the missing infrastructure layer for autonomous AI commerce. It enables AI buyer agents and AI merchant agents to **negotiate**, **agree**, and **pay** — entirely autonomously — within strict, deterministic economic policies.
+Imagine a future where AI agents negotiate and buy things for you. NEXORA is the infrastructure that makes this safe and possible. It allows AI buyers and AI sellers to negotiate, lock in an agreement, and process payments entirely on their own, without ever crossing the strict financial boundaries set by humans.
 
 ### The Foundational Principle
 
 > **"LLMs propose. Deterministic systems decide."**
 
-NEXORA is **not** "LLM calls payment API."  
-NEXORA **is** "LLM-powered agents operating inside deterministic economic policy boundaries."
+We don't just hook up an LLM to a payment API and hope for the best. In NEXORA, AI agents use their creativity to haggle and find the best deal, but a rock-solid, hard-coded rule engine makes the final call on whether the money actually moves.
+
+---
+
+## 🏗️ System Architecture
+
+We designed NEXORA with safety as the top priority. We completely separate the unpredictable, creative reasoning of AI models from the strict, secure rules of financial settlement.
+
+### Component Block Diagram
+
+```mermaid
+graph TD
+    subgraph Frontend [NEXORA React Dashboard]
+        BA_UI[Buyer Dashboard]
+        MA_UI[Merchant Dashboard]
+        Arena[Live Negotiation Arena]
+    end
+
+    subgraph Agents [AI Agents Layer]
+        BA[Buyer Agent <br>LangGraph / GPT-4o]
+        MA[Merchant Agent <br>LangGraph / GPT-4o]
+    end
+
+    subgraph Backend [FastAPI Backend Core]
+        API[REST APIs]
+        NE[Negotiation Engine]
+        AE[Agreement Engine]
+        PE[Policy Engine <br>Deterministic Rule Engine]
+    end
+
+    subgraph Finance [Settlement Layer]
+        RZP[Razorpay Integration]
+        WH[Webhook Processor]
+    end
+    
+    DB[(PostgreSQL <br> + SQLAlchemy)]
+
+    BA_UI -->|Configure Intent| BA
+    MA_UI -->|Configure Rules| PE
+    Arena <-->|Poll State| NE
+
+    BA <-->|Haggle| NE
+    MA <-->|Haggle| NE
+
+    NE -->|Consensus Reached| AE
+    AE -->|Validate Specs| PE
+    PE -->|If Approved| RZP
+    PE -->|If Violates Policy| MA_UI
+    RZP -->|Payment Link| BA_UI
+    RZP -.->|Webhook Success| WH
+    
+    Backend <--> DB
+```
+
+### Autonomous Negotiation Sequence
+
+Curious how it all works under the hood? The sequence below shows exactly how a commercial transaction flows from the buyer's initial idea all the way to final payment settlement.
+
+```mermaid
+sequenceDiagram
+    participant User as Buyer User
+    participant BA as Buyer Agent (LLM)
+    participant NE as Negotiation Engine
+    participant MA as Merchant Agent (LLM)
+    participant PE as Policy Engine
+    participant RZP as Razorpay
+
+    User->>BA: Set Intent (Max ₹50,000 for 10 units)
+    BA->>NE: Propose: ₹45,000, 7 Days Delivery
+    NE->>MA: Relay Proposal
+    MA->>NE: Counter: ₹48,000, 5 Days Delivery
+    NE->>BA: Relay Counter
+    BA->>NE: Accept: ₹48,000, 5 Days
+    NE->>PE: Route Agreement for Validation
+    
+    Note over PE: Deterministic Checks Run...
+    PE->>PE: Verify against Merchant Floor (₹45k) => PASS
+    PE->>PE: Verify Max Discount (20%) => PASS
+    
+    PE->>RZP: Create Order (₹48,000)
+    RZP-->>PE: Return Order ID & Link
+    PE-->>User: Present Payment Link
+    User->>RZP: Completes Payment
+    RZP-->>NE: Webhook (Payment Success)
+    NE-->>User: Issue Receipt & Audit Trail
+```
 
 ---
 
 ## ✨ Visual Walkthrough
 
 ### 1. Multi-Round Autonomous Negotiation
-![Timeline](frontend/public/timeline.gif)
-Watch AI agents negotiate in real-time, executing multi-round haggling over price, quantity, delivery days, and warranty. The negotiation engine guarantees structured output and bounded constraints.
+![Timeline](./frontend/public/timeline.gif)
+Watch our AI agents negotiate in real-time! They execute multi-round haggling over price, quantity, delivery days, and warranty. The negotiation engine guarantees they output structured data and stay within bounds.
 
 ### 2. Immutable Commercial Agreements
-![Agreements](frontend/public/agreements.gif)
-Once consensus is reached, it is locked into an immutable Agreement object. If it violates the Merchant's strict policy floor, it requires human approval. Otherwise, it executes instantly.
+![Agreements](./frontend/public/agreements.gif)
+Once they reach an agreement, the terms are locked into an immutable Agreement object. If it violates the Merchant's strict policy floor, it gets flagged for human review. If everything looks good, it executes instantly.
 
 ### 3. Cryptographic Audit Trails
-![Audit Trail](frontend/public/audit_trial.gif)
-Every single token, state transition, and signature is cryptographically verified and recorded. You have full visibility into the AI's "thought process" and commercial execution.
+![Audit Trail](./frontend/public/audit_trial.gif)
+Every single token, state transition, and signature is cryptographically verified and recorded. You get full visibility into exactly what the AI was thinking and how it executed the deal.
 
 ---
 
 ## 🤖 Meet the Agents
 
-NEXORA is powered by an ecosystem of intelligent, specialized agents:
+NEXORA is powered by an ecosystem of intelligent, specialized agents. Here is the team:
 
 <div align="center">
 
-| <img src="frontend/public/jake.png" width="150"/> | <img src="frontend/public/holt.png" width="150"/> | <img src="frontend/public/policy_core.png" width="150"/> |
+| <img src="./frontend/public/jake.png" width="150"/> | <img src="./frontend/public/holt.png" width="150"/> | <img src="./frontend/public/policy_core.png" width="150"/> |
 |:---:|:---:|:---:|
 | **JAKE** | **HOLT** | **POLICY CORE** |
 | *Buyer Agent* | *Merchant Agent* | *Verification Engine* |
@@ -63,44 +152,22 @@ NEXORA is powered by an ecosystem of intelligent, specialized agents:
 </div>
 
 ### The Policy Core Dashboard
-![Policy Page](frontend/public/policy_page.png)
-The heart of NEXORA. The deterministic engine has a fully-fledged dashboard proving its active parameters, execution limits, and raw JSON configuration dump.
+![Policy Page](./frontend/public/policy_page.png)
+This is the heart of NEXORA. Our deterministic engine features a fully-fledged dashboard that proves its active parameters, execution limits, and raw JSON configuration dump.
 
 ---
 
 ## Problem Statement
 
-In an agentic future, AI systems will negotiate and execute commercial transactions autonomously. Today's payment infrastructure has no answer for:
+As we move into an agentic future, AI systems will inevitably start negotiating and executing commercial transactions autonomously. The problem? Today's payment infrastructure has absolutely no answer for this.
 
 - How does an AI buyer negotiate with an AI seller?
-- How does a merchant define what its AI agent is allowed to agree to?
-- How do we prevent an LLM from hallucinating financial terms?
-- How do we verify that the final payment matches what was agreed?
-- How do we audit every agent decision?
+- How does a merchant clearly define what its AI agent is allowed to agree to?
+- How do we stop an LLM from hallucinating terrible financial terms?
+- How do we verify that the final payment matches what was actually agreed upon?
+- How do we audit every single decision the agent made?
 
-**NEXORA answers all of these.**
-
----
-
-## The Core Flow
-
-```
-AI Buyer Agent
-      ↓
-AI-to-AI Negotiation   ← LLM-powered, policy-bounded
-      ↓
-Commercial Agreement   ← structured, canonical, immutable
-      ↓
-Policy Engine          ← 100% deterministic, no LLM
-      ↓
-Payment Authorization
-      ↓
-Razorpay (Test Mode)
-      ↓
-Webhook Verification   ← HMAC-SHA256, idempotent
-      ↓
-Settlement + Audit Trail
-```
+**NEXORA answers all of these questions.**
 
 ---
 
@@ -120,25 +187,25 @@ Settlement + Audit Trail
 
 ## Quick Start
 
-### Option A — Docker (recommended)
+### Option A: Docker (Recommended)
 
 ```bash
 git clone https://github.com/swaekaa/NEXORA.git
 cd NEXORA
 
 cp .env.example .env
-# Edit .env if needed (defaults work for Docker)
+# Edit .env if needed (the defaults work great for Docker)
 
 docker compose up --build
 ```
 
-**Verify:**
+**Verify it is running:**
 ```bash
 curl http://localhost:8000/health
 # {"status":"ok","service":"nexora-api","version":"0.1.0",...}
 ```
 
-### Option B — Local Development (Backend + Frontend)
+### Option B: Local Development (Backend + Frontend)
 
 **1. Start the Database**
 ```bash
@@ -154,16 +221,16 @@ python -m venv .venv
 
 pip install -r requirements-dev.txt
 
-# Configure env
+# Configure your environment
 cp ../.env.example ../.env
-# Update DATABASE_URL to use localhost:5432
-# Provide your GEMINI_API_KEY for the LangGraph models
+# Be sure to update DATABASE_URL to use localhost:5432
+# And provide your GEMINI_API_KEY for the LangGraph models
 
-# Run migrations and seed data
+# Run migrations and seed the data
 alembic upgrade head
 python seed.py
 
-# Start server
+# Start the server!
 uvicorn app.main:app --reload
 ```
 
@@ -174,7 +241,7 @@ cd frontend
 npm install
 npm run dev
 ```
-Visit `http://localhost:5173` to view the dashboards!
+Visit `http://localhost:5173` to view the beautiful dashboards!
 
 ---
 
@@ -182,8 +249,8 @@ Visit `http://localhost:5173` to view the dashboards!
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/health` | Liveness probe — returns immediately |
-| `GET` | `/health/ready` | Readiness probe — verifies DB connection |
+| `GET` | `/health` | Liveness probe (returns immediately) |
+| `GET` | `/health/ready` | Readiness probe (verifies DB connection) |
 | `GET` | `/docs` | Swagger UI |
 | `GET` | `/redoc` | ReDoc UI |
 | `GET` | `/openapi.json` | OpenAPI schema |
@@ -194,15 +261,15 @@ Visit `http://localhost:5173` to view the dashboards!
 
 | Document | Description |
 |----------|-------------|
-| [DEVELOPMENT.md](docs/DEVELOPMENT.md) | Setup, testing, patterns, troubleshooting |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design + component map |
-| [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | 16-phase build plan |
-| [AGENT_PROTOCOL.md](docs/AGENT_PROTOCOL.md) | AI agent tool schemas + system prompts |
+| [DEVELOPMENT.md](docs/DEVELOPMENT.md) | Setup, testing, patterns, and troubleshooting |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design and component map |
+| [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Our massive 16-phase build plan |
+| [AGENT_PROTOCOL.md](docs/AGENT_PROTOCOL.md) | AI agent tool schemas and system prompts |
 | [AGREEMENT_SPEC.md](docs/AGREEMENT_SPEC.md) | Commercial agreement schema |
 | [POLICY_ENGINE.md](docs/POLICY_ENGINE.md) | Deterministic rule engine spec |
 | [PAYMENT_FLOW.md](docs/PAYMENT_FLOW.md) | Razorpay payment lifecycle |
 | [WEBHOOK_STRATEGY.md](docs/WEBHOOK_STRATEGY.md) | Idempotent webhook handling |
-| [FAILURE_HANDLING.md](docs/FAILURE_HANDLING.md) | All 7 failure scenarios |
+| [FAILURE_HANDLING.md](docs/FAILURE_HANDLING.md) | All 7 failure scenarios mapped out |
 | [DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md) | Complete SQL schema |
 
 ---
@@ -212,7 +279,7 @@ Visit `http://localhost:5173` to view the dashboards!
 - **Event:** Razorpay AI Buildathon 2026
 - **Track:** AI Growth & Agentic Commerce
 - **Deadline:** September 5, 2026
-- **Deliverable:** Working prototype + 5-minute pitch video + architecture docs
+- **Deliverable:** Working prototype, 5-minute pitch video, and architecture docs
 
 ---
 
