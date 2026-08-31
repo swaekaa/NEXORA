@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as PIXI from 'pixi.js';
 
 // Set global scale mode for crisp pixel art
@@ -17,6 +17,7 @@ export const OfficeScene: React.FC = () => {
   const { state } = useGame();
   const canvasRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
+  const [summaryAgent, setSummaryAgent] = useState<'buyer' | 'merchant' | null>(null);
   
   const stateRef = useRef<SimulationState>(state);
   
@@ -151,11 +152,13 @@ export const OfficeScene: React.FC = () => {
     buyerBase.beginFill(0x000000, 0.2); buyerBase.lineStyle(0); buyerBase.drawEllipse(0, 32, 30, 8); buyerBase.endFill();
     buyerContainer.addChild(buyerBase);
     
-    // Buyer Image Sprite (Doge)
     const buyerSprite = PIXI.Sprite.from('/buyer.png');
     buyerSprite.anchor.set(0.5, 0.85);
     buyerSprite.width = 96;
     buyerSprite.height = 96;
+    buyerSprite.eventMode = 'static';
+    buyerSprite.cursor = 'pointer';
+    buyerSprite.on('pointerdown', () => setSummaryAgent('buyer'));
     buyerContainer.addChild(buyerSprite);
 
     const buyerName = new PIXI.Text('Jake', new PIXI.TextStyle({ fontFamily: 'sans-serif', fontSize: 16, fill: '#5BC0DE', fontWeight: '900', stroke: '#111111', strokeThickness: 4, letterSpacing: 1 }));
@@ -166,11 +169,13 @@ export const OfficeScene: React.FC = () => {
     merchantBase.beginFill(0x000000, 0.2); merchantBase.lineStyle(0); merchantBase.drawEllipse(0, 32, 30, 8); merchantBase.endFill();
     merchantContainer.addChild(merchantBase);
 
-    // Merchant Image Sprite (Cat)
     const merchantSprite = PIXI.Sprite.from('/merchant.png');
     merchantSprite.anchor.set(0.5, 0.85);
     merchantSprite.width = 96;
     merchantSprite.height = 96;
+    merchantSprite.eventMode = 'static';
+    merchantSprite.cursor = 'pointer';
+    merchantSprite.on('pointerdown', () => setSummaryAgent('merchant'));
     merchantContainer.addChild(merchantSprite);
 
     const merchantName = new PIXI.Text('Holt', new PIXI.TextStyle({ fontFamily: 'sans-serif', fontSize: 16, fill: '#D9534F', fontWeight: '900', stroke: '#111111', strokeThickness: 4, letterSpacing: 1 }));
@@ -307,6 +312,25 @@ export const OfficeScene: React.FC = () => {
            message={state.activeMessage?.text || ""} 
            visible={state.activeMessage?.visible === true && state.activeMessage.sender === 'merchant'} 
         />
+
+        {summaryAgent && (
+          <div className="absolute top-12 left-1/2 transform -translate-x-1/2 bg-[#111111] border-[3px] border-[#333333] shadow-[8px_8px_0_0_rgba(51,51,51,1)] p-6 z-50 text-white font-mono max-w-[400px]">
+            <div className="flex justify-between items-center mb-4 border-b border-[#333333] pb-2">
+              <span className={`font-bold text-sm tracking-widest uppercase ${summaryAgent === 'buyer' ? 'text-[#5BC0DE]' : 'text-[#D9534F]'}`}>
+                {summaryAgent === 'buyer' ? 'JAKE (BUYER)' : 'HOLT (MERCHANT)'}
+              </span>
+              <button onClick={() => setSummaryAgent(null)} className="text-[#888888] hover:text-white hover:bg-[#333333] px-2 py-1 font-bold">[X]</button>
+            </div>
+            <div className="text-xs text-[#EAE8DD] leading-relaxed">
+              {summaryAgent === 'buyer' 
+                ? "Jake is a ruthless procurement optimizer designed to secure the lowest possible unit price while adhering to strict budget constraints. He uses data-driven arguments and aggressive negotiation tactics."
+                : "Holt is a firm but fair sales veteran who defends the merchant's profit margins. He refuses to drop below the floor price and pushes for larger commitments to justify discounts."}
+            </div>
+            <div className="mt-4 text-[10px] text-[#888888] uppercase tracking-widest text-right">
+              View full profile in Agent Roster
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

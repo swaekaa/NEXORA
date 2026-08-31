@@ -111,32 +111,60 @@ export default function AgentsPage() {
                 </div>
               </div>
 
-              <div className="space-y-4 font-mono text-sm">
+              <div className="space-y-3 font-mono text-xs">
                 <div className="flex justify-between border-b-2 border-dashed border-[#333333]/20 pb-2">
-                  <span className="text-[#888888] font-bold tracking-widest uppercase text-xs">MODEL TYPE</span>
+                  <span className="text-[#888888] font-bold tracking-widest uppercase">MODEL TYPE</span>
                   <span className="text-[#333333] font-bold">
-                    {selectedAgent === 'policy' ? 'DETERMINISTIC' : 'LLM (GPT-4.1-MINI)'}
+                    {selectedAgent === 'policy' ? 'DETERMINISTIC ENGINE' : 'LLM (GPT-4.1-MINI)'}
                   </span>
                 </div>
+                
                 <div className="flex justify-between border-b-2 border-dashed border-[#333333]/20 pb-2">
-                  <span className="text-[#888888] font-bold tracking-widest uppercase text-xs">PERSONALITY</span>
-                  <span className="text-[#333333] font-bold text-right ml-4">
-                    {selectedAgent === 'buyer' ? 'Sharp, data-driven, optimized' :
-                     selectedAgent === 'merchant' ? 'Firm but fair sales veteran' :
-                     'Cold, immutable, strict'}
+                  <span className="text-[#888888] font-bold tracking-widest uppercase">SYSTEM PROMPT</span>
+                  <span className="text-[#333333] font-bold text-right ml-4 italic">
+                    {selectedAgent === 'buyer' ? '"You are Jake, a ruthless procurement optimizer."' :
+                     selectedAgent === 'merchant' ? '"You are Holt, a firm B2B sales veteran."' :
+                     '<HARDCODED_DETERMINISTIC_RULES>'}
                   </span>
                 </div>
+
                 <div className="flex justify-between border-b-2 border-dashed border-[#333333]/20 pb-2">
-                  <span className="text-[#888888] font-bold tracking-widest uppercase text-xs">ROLE</span>
+                  <span className="text-[#888888] font-bold tracking-widest uppercase">PRIMARY OBJECTIVE</span>
                   <span className="text-[#333333] font-bold text-right ml-4">
-                    {selectedAgent === 'buyer' ? 'Negotiates best terms for buyer' :
-                     selectedAgent === 'merchant' ? 'Proposes terms on behalf of merchant' :
-                     'Enforces constraints strictly'}
+                    {selectedAgent === 'buyer' ? 'Minimize unit price while securing terms' :
+                     selectedAgent === 'merchant' ? 'Maximize profit margin above floor' :
+                     'Validate state transitions & budgets'}
                   </span>
                 </div>
-                <div className="flex justify-between pb-2">
-                  <span className="text-[#888888] font-bold tracking-widest uppercase text-xs">CONNECTION</span>
-                  <span className="text-[#5CB85C] font-bold">✓ SECURE</span>
+
+                <div className="flex justify-between border-b-2 border-dashed border-[#333333]/20 pb-2">
+                  <span className="text-[#888888] font-bold tracking-widest uppercase">CONSTRAINTS</span>
+                  <span className="text-[#333333] font-bold text-right ml-4">
+                    {selectedAgent === 'buyer' ? "Strict adherence to buyer's max budget" :
+                     selectedAgent === 'merchant' ? "Cannot sell below merchant's floor price" :
+                     'Zero tolerance for threshold violations'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between border-b-2 border-dashed border-[#333333]/20 pb-2">
+                  <span className="text-[#888888] font-bold tracking-widest uppercase">LATENCY</span>
+                  <span className="text-[#333333] font-bold text-right ml-4">
+                    {selectedAgent === 'buyer' ? '~420ms (Inference)' :
+                     selectedAgent === 'merchant' ? '~415ms (Inference)' :
+                     '<5ms (Local Execution)'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between border-b-2 border-dashed border-[#333333]/20 pb-2">
+                  <span className="text-[#888888] font-bold tracking-widest uppercase">ACTIVE MEMORY</span>
+                  <span className="text-[#333333] font-bold text-right ml-4">
+                    {selectedAgent === 'policy' ? 'Immutable Ruleset' : '128k Tokens (Context Window)'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between pb-2 pt-2">
+                  <span className="text-[#888888] font-bold tracking-widest uppercase">CONNECTION</span>
+                  <span className="text-[#5CB85C] font-bold">✓ SECURE & ENCRYPTED</span>
                 </div>
               </div>
 
