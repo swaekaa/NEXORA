@@ -15,9 +15,10 @@
 ## 🎥 See it in Action
 
 <div align="center">
-  <video src="https://github.com/swaekaa/NEXORA/raw/main/frontend/public/demo.mp4" controls="controls" muted="muted" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></video>
-  <br/>
-  <em>If the video doesn't load, <a href="https://github.com/swaekaa/NEXORA/raw/main/frontend/public/demo.mp4">click here to download and watch it directly</a>.</em>
+  <h3>
+    <a href="https://github.com/swaekaa/NEXORA/raw/main/frontend/public/demo.mp4">▶️ Click Here to Download and Watch the Full NEXORA Demo Video</a>
+  </h3>
+  <p><em>(GitHub does not support playing <code>.mp4</code> files directly from the repository tree. Click the link above to watch the full demo!)</em></p>
 </div>
 
 ---
