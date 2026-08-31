@@ -4,7 +4,7 @@ export function createWorkstations(): PIXI.Container {
   return new PIXI.Container();
 }
 
-export function drawWorkstation(g: PIXI.Graphics, container: PIXI.Container, x: number, y: number, isBuyer: boolean) {
+export function drawWorkstation(g: PIXI.Graphics, _container: PIXI.Container, x: number, y: number, isBuyer: boolean) {
   // Desk Shadow
   g.beginFill(0x000000, 0.25);
   g.drawRect(x - 65, y - 10, 130, 60);

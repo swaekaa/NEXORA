@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
 
-export function createDecorations(width: number, height: number): PIXI.Container {
+export function createDecorations(_width: number, _height: number): PIXI.Container {
   const container = new PIXI.Container();
   const g = new PIXI.Graphics();
   container.addChild(g);

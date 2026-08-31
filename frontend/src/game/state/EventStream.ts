@@ -11,8 +11,8 @@ export interface NegotiationEventStream {
 }
 
 export class IdleEventStream implements NegotiationEventStream {
-  subscribe(callback: EventCallback) {}
-  unsubscribe(callback: EventCallback) {}
+  subscribe(_callback: EventCallback) {}
+  unsubscribe(_callback: EventCallback) {}
   start(negotiationId?: string) {}
   stop() {}
 }

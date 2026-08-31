@@ -23,9 +23,9 @@ export const DealApprovedModal = ({ negotiationId, merchantId, onDismiss }: Deal
         if (data) {
           setAgreement(data);
           setLoading(false);
-          if (data.status === 'payment_captured') {
+          if (data.status === 'PAYMENT_CAPTURED') {
             setPaymentStatus('confirmed');
-          } else if (data.status === 'payment_initiated') {
+          } else if (data.status === 'PAYMENT_INITIATED') {
             setPaymentStatus('verifying');
           }
           
@@ -43,7 +43,7 @@ export const DealApprovedModal = ({ negotiationId, merchantId, onDismiss }: Deal
           setLoading(false);
         }
       }
-    }).catch(err => {
+    }).catch(() => {
       if (active) {
         setErrorMsg('DEAL COULD NOT BE LOADED');
         setLoading(false);
@@ -58,11 +58,11 @@ export const DealApprovedModal = ({ negotiationId, merchantId, onDismiss }: Deal
       intervalId = setInterval(async () => {
         try {
           const data = await api.agreements.get(agreement.id);
-          if (data.status === 'payment_captured') {
+          if (data.status === 'PAYMENT_CAPTURED') {
             setPaymentStatus('confirmed');
             setAgreement(data);
             clearInterval(intervalId);
-          } else if (data.status === 'payment_failed' || data.status === 'validation_failed' || data.status === 'cancelled') {
+          } else if (data.status === 'PAYMENT_FAILED' || data.status === 'VALIDATION_FAILED' || (data.status as any) === 'CANCELLED') {
             setPaymentStatus('failed');
             setAgreement(data);
             clearInterval(intervalId);
@@ -92,7 +92,7 @@ export const DealApprovedModal = ({ negotiationId, merchantId, onDismiss }: Deal
         try {
           const approvals = await api.approvals.list(merchantId);
           const current = approvals.find((ap: any) => ap.id === approvalRequest.id);
-          if (current && current.status !== 'pending') {
+          if (current && current.status !== 'PENDING') {
              setApprovalRequest(current);
              clearInterval(intervalId);
              const data = await api.agreements.get(agreement.id);
@@ -138,7 +138,7 @@ export const DealApprovedModal = ({ negotiationId, merchantId, onDismiss }: Deal
       const paymentInfo = await api.payments.initiate(agreement.id);
       
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TUpL4wSvURspvK',
+        key: (import.meta as any).env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TUpL4wSvURspvK',
         amount: paymentInfo.amount_paise,
         currency: paymentInfo.currency,
         name: "NEXORA",

@@ -7,8 +7,8 @@ interface DealFailedModalProps {
 }
 
 export const DealFailedModal = ({ negotiationId, onDismiss }: DealFailedModalProps) => {
-  const [negotiation, setNegotiation] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [_negotiation, setNegotiation] = useState<any>(null);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -17,7 +17,7 @@ export const DealFailedModal = ({ negotiationId, onDismiss }: DealFailedModalPro
         setNegotiation(data);
         setLoading(false);
       }
-    }).catch(err => {
+    }).catch(() => {
       if (active) {
         setLoading(false);
       }
