@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import AppShell from './components/layout/AppShell';
 import BuyerPage from './pages/BuyerPage';
 import NegotiationDetail from './pages/NegotiationDetail';
@@ -24,6 +25,7 @@ export default function App() {
         </Route>
         <Route path="/deals/:agreementId/report" element={<DealReport />} />
       </Routes>
+      <Analytics />
     </BrowserRouter>
   );
 }
