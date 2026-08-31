@@ -83,16 +83,16 @@ export default function DealReport({ agreementId: propAgreementId, onClose }: { 
   // Pre-process timeline
   let roundNum = 0;
   let currentRoundMessages: {buyer?: NegotiationMessage, merchant?: NegotiationMessage} = {};
-  const rounds: {round: parseInt, buyer?: NegotiationMessage, merchant?: NegotiationMessage}[] = [];
+  const rounds: {round: number, buyer?: NegotiationMessage, merchant?: NegotiationMessage}[] = [];
   
   messages.forEach(msg => {
-     if (msg.sender_type === 'buyer') {
+     if (msg.sender_type === 'buyer_agent') {
          if (currentRoundMessages.buyer) {
              rounds.push({ round: ++roundNum, ...currentRoundMessages });
              currentRoundMessages = {};
          }
          currentRoundMessages.buyer = msg;
-     } else if (msg.sender_type === 'merchant') {
+     } else if (msg.sender_type === 'merchant_agent') {
          currentRoundMessages.merchant = msg;
          rounds.push({ round: ++roundNum, ...currentRoundMessages });
          currentRoundMessages = {};
@@ -103,15 +103,15 @@ export default function DealReport({ agreementId: propAgreementId, onClose }: { 
   }
 
   // Extract policy checks
-  const policyCheckEvents = auditEvents.filter(e => e.event_type === 'POLICY_CHECK' || e.event_type === 'POLICY_DECISION' || e.event_type === 'EVALUATED');
+  const _policyCheckEvents = auditEvents.filter(e => e.event_type === 'POLICY_CHECK' || e.event_type === 'POLICY_DECISION' || e.event_type === 'EVALUATED');
   
   // Extract approval
   const approvalEvents = auditEvents.filter(e => e.event_type === 'APPROVAL_REQUESTED' || e.event_type === 'APPROVAL_APPROVED' || e.event_type === 'APPROVAL_REJECTED');
   
   // Inventory status (approximated from audit trail if no direct API)
   let inventoryStatus = 'RESERVED';
-  if (agreement.status === 'payment_captured') inventoryStatus = 'COMMITTED';
-  else if (agreement.status === 'payment_failed' || agreement.status === 'cancelled') inventoryStatus = 'RELEASED';
+  if (agreement.status === 'PAYMENT_CAPTURED') inventoryStatus = 'COMMITTED';
+  else if (agreement.status === 'PAYMENT_FAILED' || (agreement.status as any) === 'CANCELLED') inventoryStatus = 'RELEASED';
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8 font-sans print:p-0 print:bg-white text-sm">

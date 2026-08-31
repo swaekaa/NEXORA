@@ -43,16 +43,16 @@ export default function AuditPage() {
               events.map((evt, idx) => (
                 <div key={idx} className="flex gap-4 border-b border-slate-800 pb-2 mb-2 hover:bg-slate-800/30 p-2">
                   <div className="text-slate-500 shrink-0">
-                    {new Date(evt.timestamp).toLocaleString()}
+                    {new Date(evt.created_at).toLocaleString()}
                   </div>
                   <div className={`w-32 shrink-0 font-bold ${
-                    evt.action === 'POLICY_CHECK' ? 'text-emerald-400' :
-                    evt.action === 'AGREEMENT_CREATED' ? 'text-blue-400' : 'text-amber-400'
+                    evt.event_type === 'POLICY_CHECK' ? 'text-emerald-400' :
+                    evt.event_type === 'AGREEMENT_CREATED' ? 'text-blue-400' : 'text-amber-400'
                   }`}>
-                    {evt.action.replace('_', ' ')}
+                    {evt.event_type.replace('_', ' ')}
                   </div>
                   <div className="text-slate-300">
-                    {evt.actor_type.toUpperCase()} / {evt.target_resource_type.toUpperCase()} ({evt.target_resource_id.split('-')[0]})
+                    {evt.actor_type?.toUpperCase()} / {(evt.agreement_id ? 'AGREEMENT' : 'NEGOTIATION')} ({(evt.agreement_id || evt.negotiation_id || evt.id)?.split('-')[0]})
                   </div>
                 </div>
               ))

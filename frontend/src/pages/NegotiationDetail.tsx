@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Play } from 'lucide-react';
+
 import { OfficeScene } from '../game/OfficeScene';
 import { GameProvider, useGame } from '../game/GameContext';
 import { MockEventStream, LiveEventStream, NegotiationEventStream, IdleEventStream } from '../game/state/EventStream';
 import { NegotiationHUD } from '../components/hud/NegotiationHUD';
-import { ActivityLog } from '../components/hud/ActivityLog';
+
 import { api } from '../api';
 import { useNegotiationSession } from '../hooks/useNegotiationSession';
 import { DealApprovedModal } from '../components/agreement/DealApprovedModal';
@@ -16,7 +16,7 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
   const activityLogRef = useRef<HTMLDivElement>(null);
   const [logWidth, setLogWidth] = useState(350); // Increased default width
   const isDragging = useRef(false);
-  const { clearSession, activeNegotiationId } = useNegotiationSession();
+  const { activeNegotiationId } = useNegotiationSession();
   const [showModal, setShowModal] = useState(false);
   const [showFailedModal, setShowFailedModal] = useState(false);
 
@@ -60,7 +60,7 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
   }, []);
 
   // Find agreed deal event for the popup
-  const agreedEvent = state.events.find(e => e.type === 'agreement_created');
+  const _agreedEvent = state.events.find(e => e.type === 'agreement_created');
 
   return (
     <div className="w-full h-full overflow-hidden bg-[#EAE8DD] relative">
@@ -179,7 +179,7 @@ export default function NegotiationDetail() {
   const [humanApproval, setHumanApproval] = useState(false);
 
   useEffect(() => {
-    let active = true;
+    let _active = true;
     async function loadInitialState() {
       // Check query params
       const searchParams = new URLSearchParams(window.location.search);
@@ -217,13 +217,6 @@ export default function NegotiationDetail() {
     };
   }, [id, activeNegotiationId]);
 
-  const startNewSetup = () => {
-    if (stream) stream.stop();
-    setStream(null);
-    clearSession();
-    setSimulationMode('setup');
-    navigate('/office?new=true');
-  };
 
   const startLive = async () => {
     try {
@@ -443,7 +436,7 @@ export default function NegotiationDetail() {
 }
 
 // Extract bottom section to use GameContext for Timeline Graph
-function BottomSection({ startDemo, simulationMode }: { startDemo: () => void, simulationMode: 'setup' | 'live' | 'demo' }) {
+function BottomSection({ startDemo: _startDemo, simulationMode: _simulationMode }: { startDemo: () => void, simulationMode: 'setup' | 'live' | 'demo' }) {
   const { state } = useGame();
   const timelineRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);

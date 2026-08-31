@@ -83,7 +83,7 @@ export default function MerchantDashboard() {
       const paymentInfo = await api.payments.initiate(deal.id);
       
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TUpL4wSvURspvK',
+        key: (import.meta as any).env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TUpL4wSvURspvK',
         amount: paymentInfo.amount_paise,
         currency: paymentInfo.currency,
         name: "NEXORA",
@@ -271,18 +271,18 @@ export default function MerchantDashboard() {
                       [ VIEW REPORT ]
                     </button>
 
-                    {deal.status === 'payment_captured' ? (
+                    {deal.status === 'PAYMENT_CAPTURED' ? (
                        <div className="w-full bg-[#EAE8DD] text-[#5CB85C] border-2 border-[#5CB85C] py-2 font-bold uppercase tracking-widest text-xs flex justify-center items-center">
                          ACCEPTED · ✓ PAID
                        </div>
-                    ) : deal.status === 'pending_approval' ? (
+                    ) : deal.status === 'PENDING_APPROVAL' ? (
                        <button 
                          disabled={true}
                          className="w-full bg-[#F0AD4E] text-[#111111] border-2 border-[#111111] py-2 font-bold uppercase tracking-widest text-xs shadow-[2px_2px_0_0_rgba(17,17,17,1)] disabled:opacity-50"
                        >
                          [ REQUIRES APPROVAL ]
                        </button>
-                    ) : deal.status === 'validation_failed' || deal.status === 'payment_failed' || deal.status === 'cancelled' ? (
+                    ) : deal.status === 'VALIDATION_FAILED' || deal.status === 'PAYMENT_FAILED' || (deal.status as any) === 'CANCELLED' ? (
                        <button 
                          disabled={true}
                          className="w-full bg-[#D9534F] text-white border-2 border-[#111111] py-2 font-bold uppercase tracking-widest text-xs shadow-[2px_2px_0_0_rgba(17,17,17,1)] disabled:opacity-50"
