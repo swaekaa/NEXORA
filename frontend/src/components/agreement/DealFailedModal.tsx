@@ -8,13 +8,26 @@ interface DealFailedModalProps {
 
 export const DealFailedModal = ({ negotiationId, onDismiss }: DealFailedModalProps) => {
   const [_negotiation, setNegotiation] = useState<any>(null);
+  const [failureReason, setFailureReason] = useState<string | null>(null);
   const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    api.negotiations.get(negotiationId).then(data => {
+    
+    // Fetch both negotiation state and messages to find the failure reason
+    Promise.all([
+      api.negotiations.get(negotiationId),
+      api.negotiations.getMessages(negotiationId)
+    ]).then(([negData, messages]) => {
       if (active) {
-        setNegotiation(data);
+        setNegotiation(negData);
+        if (messages && messages.length > 0) {
+          const lastMessage = messages[messages.length - 1];
+          // Usually the failure reason is the content of the final message
+          if (lastMessage.content) {
+            setFailureReason(lastMessage.content);
+          }
+        }
         setLoading(false);
       }
     }).catch(() => {
@@ -22,6 +35,7 @@ export const DealFailedModal = ({ negotiationId, onDismiss }: DealFailedModalPro
         setLoading(false);
       }
     });
+    
     return () => { active = false; };
   }, [negotiationId]);
 
@@ -40,6 +54,13 @@ export const DealFailedModal = ({ negotiationId, onDismiss }: DealFailedModalPro
         <p className="text-sm font-mono text-[#333333] text-center mb-6">
           The Buyer and Merchant agents were unable to reach a mutually acceptable agreement within the constraints.
         </p>
+
+        {failureReason && (
+          <div className="w-full bg-[#EAE8DD] border-2 border-[#333333] p-3 mb-6 flex flex-col gap-2">
+            <span className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">FAILURE REASON</span>
+            <span className="text-sm font-mono text-[#D9534F] font-bold">{failureReason}</span>
+          </div>
+        )}
         
         <div className="w-full flex flex-col gap-3">
           <button 
