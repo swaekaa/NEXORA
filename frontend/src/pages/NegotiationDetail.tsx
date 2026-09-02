@@ -11,6 +11,15 @@ import { useNegotiationSession } from '../hooks/useNegotiationSession';
 import { DealApprovedModal } from '../components/agreement/DealApprovedModal';
 import { DealFailedModal } from '../components/agreement/DealFailedModal';
 
+// ─── Demo Seed Data ───────────────────────────────────────────────────────────
+// These UUIDs correspond to the seeded demo merchant and buyer in the database.
+// They are stable for the demo environment. Change here if the seed changes.
+const DEMO_MERCHANT_ID = "987f6543-e21b-34c5-b678-426614174999";
+const DEMO_BUYER_ID = "123e4567-e89b-12d3-a456-426614174000";
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode: boolean, simulationMode: 'setup' | 'live' | 'demo', children?: React.ReactNode }) => {
   const { state } = useGame();
   const activityLogRef = useRef<HTMLDivElement>(null);
@@ -135,7 +144,7 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
         {showModal && activeNegotiationId && (
           <DealApprovedModal 
             negotiationId={activeNegotiationId} 
-            merchantId="987f6543-e21b-34c5-b678-426614174999" 
+            merchantId={DEMO_MERCHANT_ID} 
             onDismiss={() => {
                setShowModal(false);
             }} 
@@ -220,8 +229,8 @@ export default function NegotiationDetail() {
       setErrorMsg(null);
       setSimulationMode('live');
       
-      const merchant_id = "987f6543-e21b-34c5-b678-426614174999";
-      const buyer_id = "123e4567-e89b-12d3-a456-426614174000";
+      const merchant_id = DEMO_MERCHANT_ID;
+      const buyer_id = DEMO_BUYER_ID;
 
       // 1. Create/activate Merchant Policy
       await api.policies.create(merchant_id, {

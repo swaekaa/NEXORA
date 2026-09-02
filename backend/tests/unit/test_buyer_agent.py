@@ -46,6 +46,7 @@ def base_state(base_intent) -> BuyerAgentState:
         "selected_product_id": product_id,
         "proposal_revisions": 0,
         "negotiation_round": 0,
+        "strategy": None,  # New field: the agent's current negotiation strategy
         "current_action": None,
         "deterministic_total": None,
         "merchant_counter": None,
@@ -55,6 +56,7 @@ def base_state(base_intent) -> BuyerAgentState:
         "negotiation_id": None,
         "messages": []
     }
+
 
 
 @pytest.mark.asyncio

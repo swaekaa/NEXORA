@@ -20,7 +20,7 @@ from app.llm import get_llm
 from app.agents.buyer.prompts import SYSTEM_INSTRUCTION
 from app.agents.buyer.schemas import ActionType, BuyerAgentAction, BuyerAgentState
 from app.agents.buyer.constraints import BuyerConstraintEngine
-from app.agents.buyer.tools import search_products
+from app.agents.buyer.tools import search_products, get_negotiation_history, get_product_inventory
 from app.services.negotiation_service import (
     create_negotiation_with_proposal,
     append_negotiation_message,
@@ -55,7 +55,7 @@ def format_state_for_llm(state: BuyerAgentState) -> list:
     policy_reasons = state.get("policy_reasons") or []
     reasons_text = ", ".join(policy_reasons) if policy_reasons else "NONE"
     
-    # Format negotiation history
+    # Format merchant counteroffer feedback
     merchant_feedback = ""
     if state.get("merchant_counter"):
         mc = state["merchant_counter"]
@@ -67,6 +67,11 @@ def format_state_for_llm(state: BuyerAgentState) -> list:
             f"--------------------------------------\n\n"
         )
     
+    # Strategy context
+    strategy_text = ""
+    if state.get("strategy"):
+        strategy_text = f"--- MY CURRENT STRATEGY ---\n{state['strategy']}\n---------------------------\n\n"
+
     human_msg = (
         f"--- BUYER INTENT ---\n"
         f"Budget: {intent.maximum_budget} {intent.preferred_currency}\n"
@@ -79,20 +84,22 @@ def format_state_for_llm(state: BuyerAgentState) -> list:
         f"Selected Product ID: {state.get('selected_product_id')}\n"
         f"Negotiation Status: {state.get('negotiation_status', 'Not Started')}\n"
         f"Negotiation Round: {state.get('negotiation_round', 0)}\n"
+        f"Proposal Revisions: {state.get('proposal_revisions', 0)} (if > 2, consider changing strategy or stopping)\n"
         f"---------------------\n\n"
+        f"{strategy_text}"
         f"{merchant_feedback}"
         f"--- DETERMINISTIC FEEDBACK ---\n"
         f"Status: {policy_status}\n"
         f"Reasons: {reasons_text}\n"
         f"-----------------------\n\n"
         f"{catalog_text}\n\n"
-        f"Action: What will you do next? (Must respond with valid JSON matching BuyerAgentAction)"
+        f"What will you do next? Output valid JSON matching BuyerAgentAction. Your 'reason' field must explain your decision with specific numbers."
     )
     
     msgs = [SystemMessage(content=SYSTEM_INSTRUCTION)]
     # Append conversation history so the LLM remembers its past actions
     msgs.extend(state.get("messages", []))
-    # Always append the current state as the FINAL HumanMessage to ensure valid Gemini turn order
+    # Always append the current state as the FINAL HumanMessage
     msgs.append(HumanMessage(content=human_msg))
     
     return msgs
@@ -179,8 +186,28 @@ async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) ->
         return {"status": "failed", "error_reason": "No action provided"}
         
     if action.action == ActionType.STOP:
+        logger.info(f"execute_action | run_id={state.get('run_id')} | action=STOP | reason={action.reason}")
         return {"status": "completed"}
-        
+
+    elif action.action == ActionType.REJECT_NEGOTIATION:
+        # Buyer explicitly walks away from the negotiation
+        logger.info(f"execute_action | run_id={state.get('run_id')} | action=REJECT_NEGOTIATION | reason={action.reason}")
+        session = config["configurable"]["session"]
+        negotiation_id = state.get("negotiation_id")
+        if negotiation_id:
+            try:
+                await append_negotiation_message(
+                    session=session,
+                    negotiation_id=negotiation_id,
+                    sender_type=SenderType.BUYER_AGENT,
+                    sender_id=str(state["intent"].buyer_id),
+                    message_type=MessageType.REJECT,
+                    content=action.reason
+                )
+            except Exception as e:
+                logger.warning(f"execute_action | REJECT_NEGOTIATION could not persist rejection: {e}")
+        return {"status": "completed", "negotiation_status": "REJECTED"}
+
     elif action.action == ActionType.SEARCH_PRODUCTS:
         logger.info(f"execute_action | run_id={state.get('run_id')} | action=SEARCH_PRODUCTS")
         
@@ -195,16 +222,30 @@ async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) ->
         # Actually hit the database via the tool (which uses ProductService)
         query = action.search_query or state["intent"].product_query
         try:
-            # We call the async tool directly passing the config
             results = await search_products.ainvoke(
                 {"merchant_id": str(state["intent"].merchant_id), "query": query},
                 config=config
             )
             from langchain_core.messages import HumanMessage
-            tool_msg = HumanMessage(content=f"Search executed. Found {len(results)} products.")
+            tool_msg = HumanMessage(content=f"SEARCH_PRODUCTS completed. Found {len(results)} products matching '{query}'.")
             return {"candidate_products": results, "messages": [tool_msg]}
         except Exception as e:
             return {"policy_decision": "deny", "policy_reasons": [f"Search failed: {str(e)}"]}
+
+    elif action.action == ActionType.INSPECT_PRODUCT:
+        logger.info(f"execute_action | run_id={state.get('run_id')} | action=INSPECT_PRODUCT | id={action.product_id}")
+        if not action.product_id:
+            return {"policy_decision": "deny", "policy_reasons": ["product_id is required for INSPECT_PRODUCT"]}
+        try:
+            result = await get_product_inventory.ainvoke(
+                {"merchant_id": str(state["intent"].merchant_id), "product_id": str(action.product_id)},
+                config=config
+            )
+            from langchain_core.messages import HumanMessage
+            tool_msg = HumanMessage(content=f"INSPECT_PRODUCT result: {result}")
+            return {"messages": [tool_msg]}
+        except Exception as e:
+            return {"policy_decision": "deny", "policy_reasons": [f"INSPECT_PRODUCT failed: {str(e)}"]}
         
     elif action.action == ActionType.SELECT_PRODUCT:
         logger.info(f"execute_action | run_id={state.get('run_id')} | action=SELECT_PRODUCT | id={action.product_id}")
@@ -219,11 +260,11 @@ async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) ->
         session = config["configurable"]["session"]
         await record_event(
             session=session,
-            event_type="PRODUCT_SELECTED", 
+            event_type=AuditEventType.BUYER_TOOL_INVOKED, 
             actor_type="BUYER_AGENT",
-            actor_id=str(state["intent"].buyer_id),
+            actor_id=state["intent"].buyer_id,
             merchant_id=state["intent"].merchant_id,
-            metadata={"product_selected": str(action.product_id)}
+            metadata={"tool": "SELECT_PRODUCT", "product_id": str(action.product_id), "reason": action.reason}
         )
         # Commit immediately so the transaction doesn't stay open if graph loops back to run_llm
         await session.commit()
@@ -235,7 +276,7 @@ async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) ->
     elif action.action == ActionType.ACCEPT_COUNTER:
         return {} # Will route to submit_proposal to accept
         
-    return {"status": "failed", "error_reason": "Unknown Action"}
+    return {"status": "failed", "error_reason": f"Unknown Action: {action.action}"}
 
 
 async def validate_proposal_node(state: BuyerAgentState, config: RunnableConfig) -> dict:
@@ -243,25 +284,11 @@ async def validate_proposal_node(state: BuyerAgentState, config: RunnableConfig)
     action = state["current_action"]
     intent = state["intent"]
     
-    # ---------------------------------------------------------
-    # DEMO NEGOTIATION STRATEGY: Enforce minimum rounds
-    # ---------------------------------------------------------
-    from app.config import settings
-    logger.error(f"DEBUG_BUYER: action={action.action}, current_round={state.get('negotiation_round', 1)}, MIN_ROUNDS={settings.NEGOTIATION_DEMO_MIN_ROUNDS}")
     if action.action == ActionType.ACCEPT_COUNTER:
-        current_round = state.get("negotiation_round", 1)
-        if current_round < settings.NEGOTIATION_DEMO_MIN_ROUNDS:
-            logger.error("DEBUG_BUYER: DENYING ACCEPT_COUNTER due to demo strategy")
-            return {
-                "policy_decision": "DENY",
-                "policy_reasons": [
-                    f"Demo Strategy Active: You attempted to ACCEPT_COUNTER on round {current_round}. "
-                    f"The minimum required rounds is {settings.NEGOTIATION_DEMO_MIN_ROUNDS}. "
-                    "You MUST generate a COUNTER_PROPOSAL instead to continue the negotiation."
-                ]
-            }
-        logger.error("DEBUG_BUYER: ALLOWING ACCEPT_COUNTER")
-        return {} # Safe to pass through, no numeric validation needed for accepting
+        # No numeric validation needed for accepting a counteroffer — pass through.
+        # The BuyerConstraintEngine already validated this when we evaluated the counteroffer.
+        logger.info(f"validate_proposal_node | run_id={state.get('run_id')} | ACCEPT_COUNTER pass-through at round={state.get('negotiation_round', 1)}")
+        return {}
         
     try:
         if action.proposed_unit_price is None:
@@ -278,10 +305,10 @@ async def validate_proposal_node(state: BuyerAgentState, config: RunnableConfig)
         constraint_engine = BuyerConstraintEngine()
         result = constraint_engine.evaluate_proposal(intent, unit_price, qty)
         
-        logger.error(f"DEBUG_BUYER: Constraint result={result.passed}, reasons={result.reasons}, total={total}, budget={intent.maximum_budget}")
+        logger.info(f"validate_proposal_node | run_id={state.get('run_id')} | constraint_passed={result.passed} | total={total} | budget={intent.maximum_budget}")
         
         if not result.passed:
-            logger.error(f"DEBUG_BUYER: DENYING due to constraints: {result.reasons}")
+            logger.warning(f"validate_proposal_node | run_id={state.get('run_id')} | DENY reasons={result.reasons}")
             return {
                 "policy_decision": "DENY", 
                 "policy_reasons": result.reasons
@@ -353,13 +380,14 @@ async def submit_proposal_node(state: BuyerAgentState, config: RunnableConfig) -
             
         elif action.action == ActionType.ACCEPT_COUNTER and state["negotiation_id"]:
             # Accept merchant's counter
+            accept_content = action.reason if action.reason else "Buyer accepts the terms."
             await append_negotiation_message(
                 session=session,
                 negotiation_id=state["negotiation_id"],
                 sender_type=SenderType.BUYER_AGENT,
                 sender_id=str(intent.buyer_id),
                 message_type=MessageType.ACCEPT,
-                content="Buyer accepts the terms."
+                content=accept_content
             )
             
             # Handoff to Agreement Service

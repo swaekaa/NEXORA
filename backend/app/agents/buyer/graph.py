@@ -54,7 +54,7 @@ def create_buyer_agent_graph() -> StateGraph:
         if action.action in ["PROPOSE_AGREEMENT", "COUNTER_PROPOSAL", "ACCEPT_COUNTER"]:
             return "validate_proposal"
             
-        # Otherwise, go back to LLM to take next action (like searching)
+        # SEARCH, SELECT, INSPECT loop back to LLM after execution
         return "run_llm"
         
     workflow.add_conditional_edges(

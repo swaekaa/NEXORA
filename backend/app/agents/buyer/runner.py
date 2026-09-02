@@ -58,6 +58,7 @@ async def run_buyer_agent(session: AsyncSession, intent: BuyerIntent) -> BuyerAg
         "selected_product_id": None,
         "proposal_revisions": 0,
         "negotiation_round": 0,
+        "strategy": None,
         "current_action": None,
         "deterministic_total": None,
         "merchant_counter": None,
@@ -71,12 +72,19 @@ async def run_buyer_agent(session: AsyncSession, intent: BuyerIntent) -> BuyerAg
     # Log intent received
     await record_event(
         session=session,
-        event_type=AuditEventType.POLICY_CHECK, # Using existing event types as fallback
+        event_type=AuditEventType.NEGOTIATION_STARTED,
         actor_type="BUYER_AGENT",
-        actor_id=str(intent.buyer_id),
+        actor_id=intent.buyer_id,
         merchant_id=intent.merchant_id,
-        metadata={"action": "INTENT_RECEIVED", "run_id": initial_state["run_id"]}
+        metadata={
+            "action": "INTENT_RECEIVED",
+            "run_id": initial_state["run_id"],
+            "product_query": intent.product_query,
+            "quantity": intent.quantity,
+            "maximum_budget": str(intent.maximum_budget),
+        }
     )
+
     
     # Commit the transaction so the DB connection is returned to the pool
     # before we start the potentially long-running LangGraph execution.

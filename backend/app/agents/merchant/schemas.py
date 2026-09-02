@@ -39,6 +39,11 @@ class MerchantIntent(BaseModel):
     
     product_description: str
     buyer_message: str | None
+    
+    # Full negotiation message history for LLM context (list of message dicts)
+    # Format: [{"sequence": int, "sender": str, "message_type": str, "content": str, "unit_price": str, ...}, ...]
+    negotiation_history: list[dict] = Field(default_factory=list)
+
 
 
 class MerchantActionType(str, Enum):

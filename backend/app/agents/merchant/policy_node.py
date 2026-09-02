@@ -61,20 +61,6 @@ def policy_check_node(state: MerchantAgentState) -> dict:
     decision = result.decision.value
     reasons = [c.reason for c in result.failed_checks] if result.failed_checks else []
     
-    # ---------------------------------------------------------
-    # DEMO NEGOTIATION STRATEGY: Enforce minimum rounds
-    # ---------------------------------------------------------
-    from app.config import settings
-    
-    if action.action == MerchantActionType.ACCEPT_PROPOSAL and decision == PolicyDecision.ALLOW.value:
-        if intent.round_count < settings.NEGOTIATION_DEMO_MIN_ROUNDS:
-            decision = PolicyDecision.DENY.value
-            reasons.append(
-                f"Demo Strategy Active: You attempted to ACCEPT_PROPOSAL on round {intent.round_count}. "
-                f"The minimum required rounds is {settings.NEGOTIATION_DEMO_MIN_ROUNDS}. "
-                "You MUST generate a COUNTER_PROPOSAL instead to continue the negotiation, even if the current offer is acceptable."
-            )
-    
     return {
         "policy_decision": decision,
         "policy_reasons": reasons

@@ -29,23 +29,46 @@ async def run_llm_node(state: MerchantAgentState) -> dict:
     logger.info(f"MERCHANT_GRAPH_STARTED | negotiation_id={state['intent'].negotiation_id}")
     logger.info(f"MERCHANT_LLM_STARTED | negotiation_id={state['intent'].negotiation_id}")
     logger.info(f"merchant_agent_llm_started | run_id={state.get('run_id')}")
+    
     if state["status"] != "in_progress":
         return {}
+    
+    # Guard against infinite loops
+    if state.get("step_count", 0) >= 15:
+        logger.error(f"MERCHANT_AGENT_FAILED | negotiation_id={state['intent'].negotiation_id} | exception_type=StepLimitExceeded")
+        return {"status": "failed", "error_reason": "MAX_AGENT_STEPS_EXCEEDED"}
 
     prompt = get_prompt()
     
+    # Format negotiation history for the prompt
+    intent = state["intent"]
+    history_text = "No previous messages.\n"
+    if intent.negotiation_history:
+        lines = []
+        for msg in intent.negotiation_history:
+            sender = msg.get("sender", "unknown")
+            msg_type = msg.get("message_type", "")
+            content = msg.get("content", "")
+            price = msg.get("unit_price")
+            qty = msg.get("quantity")
+            price_text = f" | Price: {price}" if price else ""
+            qty_text = f" | Qty: {qty}" if qty else ""
+            lines.append(f"  [{msg.get('sequence')}] {sender} ({msg_type}){price_text}{qty_text}: {content}")
+        history_text = "\n".join(lines) + "\n"
+    
     # Render the prompt with state data
     messages = prompt.format_messages(
-        policy_minimum_price=state["intent"].policy_minimum_price,
-        policy_maximum_autonomous_transaction=state["intent"].policy_maximum_autonomous_transaction,
-        policy_maximum_discount_percent=state["intent"].policy_maximum_discount_percent,
-        product_description=state["intent"].product_description,
-        round_count=state["intent"].round_count,
-        max_rounds=state["intent"].max_rounds,
-        buyer_proposed_quantity=state["intent"].buyer_proposed_quantity,
-        buyer_proposed_unit_price=state["intent"].buyer_proposed_unit_price,
-        buyer_proposed_discount_percent=state["intent"].buyer_proposed_discount_percent,
-        buyer_message=state["intent"].buyer_message or "None",
+        policy_minimum_price=intent.policy_minimum_price,
+        policy_maximum_autonomous_transaction=intent.policy_maximum_autonomous_transaction,
+        policy_maximum_discount_percent=intent.policy_maximum_discount_percent,
+        product_description=intent.product_description,
+        round_count=intent.round_count,
+        max_rounds=intent.max_rounds,
+        buyer_proposed_quantity=intent.buyer_proposed_quantity,
+        buyer_proposed_unit_price=intent.buyer_proposed_unit_price,
+        buyer_proposed_discount_percent=intent.buyer_proposed_discount_percent,
+        buyer_message=intent.buyer_message or "None",
+        negotiation_history=history_text,
         messages=state["messages"]
     )
     
@@ -91,6 +114,7 @@ async def run_llm_node(state: MerchantAgentState) -> dict:
     
     return {
         "current_action": action,
+        "step_count": state.get("step_count", 0) + 1,
         "messages": [new_msg],
     }
 
