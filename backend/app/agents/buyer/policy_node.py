@@ -34,7 +34,7 @@ async def policy_check_node(state: BuyerAgentState, config: RunnableConfig) -> d
 
 def route_policy_decision(state: BuyerAgentState) -> str:
     """Conditional router based on policy outcome."""
-    if state["status"] in ["failed", "completed"]:
+    if state.get("status") in ["failed", "completed"]:
         return "END"
         
     action = state["current_action"]

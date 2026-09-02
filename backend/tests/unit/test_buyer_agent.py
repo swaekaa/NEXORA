@@ -124,10 +124,12 @@ async def test_llm_timeout_handled(base_state, policy_context):
     config = RunnableConfig(configurable={"session": session_mock, "policy_context": policy_context})
     
     with patch("app.agents.buyer.nodes.get_llm") as mock_get_llm:
-        mock_llm = AsyncMock()
+        mock_llm = MagicMock()
+        mock_structured = AsyncMock()
         from httpx import ReadTimeout
         # Simulate structured output LLM throwing a timeout after retries
-        mock_llm.with_structured_output.return_value.ainvoke.side_effect = ReadTimeout("504 Deadline expired before operation could complete.")
+        mock_structured.ainvoke.side_effect = ReadTimeout("504 Deadline expired before operation could complete.")
+        mock_llm.with_structured_output.return_value = mock_structured
         mock_get_llm.return_value = mock_llm
         
         from app.agents.buyer.nodes import run_llm_node

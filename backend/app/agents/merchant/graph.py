@@ -51,9 +51,9 @@ def route_after_policy(state: MerchantAgentState) -> Literal["submit_decision", 
         return "recover"
 
 
-def route_after_recovery(state: MerchantAgentState) -> Literal["run_llm", "failed"]:
-    if state["status"] == "failed":
-        return "failed"
+def route_after_recovery(state: MerchantAgentState) -> str:
+    if state.get("status") == "failed":
+        return "END"
     return "run_llm"
 
 
@@ -112,8 +112,8 @@ def build_merchant_agent_graph() -> StateGraph:
         "recovery",
         route_after_recovery,
         {
-            "run_llm": "run_llm",
-            "failed": END
+            "END": END,
+            "run_llm": "run_llm"
         }
     )
     

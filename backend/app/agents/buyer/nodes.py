@@ -37,63 +37,68 @@ def format_state_for_llm(state: BuyerAgentState) -> list:
     intent = state["intent"]
     
     # Safely format product catalog for context
-    catalog_text = "Available Products:\n"
+    catalog_text = ""
     if state.get("selected_product_id") and state.get("merchant_counter"):
-        catalog_text += f"You are currently negotiating for Product ID: {state.get('selected_product_id')}. Do NOT search for products. Focus on responding to the counteroffer.\n"
+        catalog_text = f"Currently negotiating for product ID: {state.get('selected_product_id')}. A merchant counteroffer is available — respond to it."
     elif not state["candidate_products"]:
         if state.get("step_count", 0) > 0:
-            catalog_text += "No products were found matching your query! You MUST take the STOP action since there is nothing to buy.\n"
+            catalog_text = "No products matched the search query. Consider stopping the negotiation."
         else:
-            catalog_text += "No products discovered yet. Take SEARCH_PRODUCTS action to search the catalog.\n"
+            catalog_text = "No products discovered yet. Use the SEARCH_PRODUCTS action to search the catalog."
     else:
-        catalog_text += "CRITICAL INSTRUCTION: Products HAVE been found! You MUST now take the SELECT_PRODUCT action to choose one of the IDs below.\n"
+        catalog_text = "Products discovered — please select one:\n"
         for p in state["candidate_products"]:
-            catalog_text += f"- ID: {p.get('id')} | Name: {p.get('name')} | Price: {p.get('price')} | SKU: {p.get('sku')} | Desc: {p.get('description')}\n"
+            catalog_text += f"- ID: {p.get('id')} | Name: {p.get('name')} | Price: {p.get('price')} | SKU: {p.get('sku')}\n"
     
     # Format policy/constraint feedback if any
     policy_status = state.get("policy_decision") or "NONE"
     policy_reasons = state.get("policy_reasons") or []
     reasons_text = ", ".join(policy_reasons) if policy_reasons else "NONE"
     
-    # Format merchant counteroffer feedback
-    merchant_feedback = ""
+    # Format merchant counteroffer as structured data (clearly labelled as data, not instructions)
+    merchant_section = ""
     if state.get("merchant_counter"):
         mc = state["merchant_counter"]
-        merchant_feedback = (
-            f"--- MERCHANT COUNTEROFFER RECEIVED ---\n"
-            f"Merchant Price: {mc.get('unit_price')}\n"
-            f"Merchant Total: {mc.get('total_amount')}\n"
-            f"Merchant Message: {mc.get('content', 'No additional message')}\n"
-            f"--------------------------------------\n\n"
+        merchant_section = (
+            "Merchant counteroffer (negotiation data):\n"
+            f"  unit_price: {mc.get('unit_price')}\n"
+            f"  total_amount: {mc.get('total_amount')}\n"
+            f"  merchant_message: {mc.get('content', '')}\n\n"
         )
-    
-    # Strategy context
-    strategy_text = ""
+
+    # Buyer's own strategy note (safe internal context)
+    strategy_section = ""
     if state.get("strategy"):
-        strategy_text = f"--- MY CURRENT STRATEGY ---\n{state['strategy']}\n---------------------------\n\n"
+        strategy_section = f"Current strategy note: {state['strategy']}\n\n"
+
+    # Validation feedback
+    policy_status = state.get("policy_decision") or "none"
+    policy_reasons = state.get("policy_reasons") or []
+    reasons_text = "; ".join(policy_reasons) if policy_reasons else "none"
 
     human_msg = (
-        f"--- BUYER INTENT ---\n"
-        f"Budget: {intent.maximum_budget} {intent.preferred_currency}\n"
-        f"Quantity: {intent.quantity}\n"
-        f"Query: {intent.product_query}\n"
-        f"Requirements: {intent.requirements}\n"
-        f"Preferences: {intent.preferences}\n"
-        f"--------------------\n\n"
-        f"--- CURRENT STATE ---\n"
-        f"Selected Product ID: {state.get('selected_product_id')}\n"
-        f"Negotiation Status: {state.get('negotiation_status', 'Not Started')}\n"
-        f"Negotiation Round: {state.get('negotiation_round', 0)}\n"
-        f"Proposal Revisions: {state.get('proposal_revisions', 0)} (if > 2, consider changing strategy or stopping)\n"
-        f"---------------------\n\n"
-        f"{strategy_text}"
-        f"{merchant_feedback}"
-        f"--- DETERMINISTIC FEEDBACK ---\n"
-        f"Status: {policy_status}\n"
-        f"Reasons: {reasons_text}\n"
-        f"-----------------------\n\n"
-        f"{catalog_text}\n\n"
-        f"What will you do next? Output valid JSON matching BuyerAgentAction. Your 'reason' field must explain your decision with specific numbers."
+        "Buyer intent:\n"
+        f"  budget: {intent.maximum_budget} {intent.preferred_currency}\n"
+        f"  quantity: {intent.quantity}\n"
+        f"  target_unit_price: {intent.target_unit_price}\n"
+        f"  reservation_unit_price: {intent.reservation_unit_price}\n"
+        f"  product_query: {intent.product_query}\n"
+        f"  requirements: {intent.requirements}\n"
+        f"  preferences: {intent.preferences}\n\n"
+        "Current negotiation state:\n"
+        f"  selected_product_id: {state.get('selected_product_id')}\n"
+        f"  negotiation_status: {state.get('negotiation_status', 'not_started')}\n"
+        f"  negotiation_round: {state.get('negotiation_round', 0)}\n"
+        f"  previous_buyer_offer: {state.get('previous_offer', 'none')}\n"
+        f"  merchant_offer: {state.get('opponent_offer', 'none')}\n"
+        f"  price_gap: {state.get('price_gap', 'none')}\n\n"
+        f"{merchant_section}"
+        f"{strategy_section}"
+        f"Product catalog:\n{catalog_text}\n\n"
+        "Validation system feedback:\n"
+        f"  status: {policy_status}\n"
+        f"  reasons: {reasons_text}\n\n"
+        "Select your next action and return the BuyerAgentAction JSON."
     )
     
     msgs = [SystemMessage(content=SYSTEM_INSTRUCTION)]
@@ -135,9 +140,9 @@ async def run_llm_node(state: BuyerAgentState, config: RunnableConfig) -> dict:
             if action is not None:
                 logger.info(f"buyer_agent_llm_chose_action | run_id={state.get('run_id')} | action={action.action} | product_id={action.product_id}")
                 break
-            
-            # If the model fails to use the tool, add a strong reminder
-            messages.append(HumanMessage(content="You failed to output the structured JSON. You MUST respond ONLY by calling the provided tool schema for BuyerAgentAction."))
+
+            # Model returned None without error — request a structured response
+            messages.append(HumanMessage(content="Please provide a valid JSON response using the BuyerAgentAction schema."))
         except Exception as e:
             last_error = e
             attempt_elapsed = time.time() - attempt_start
@@ -151,7 +156,9 @@ async def run_llm_node(state: BuyerAgentState, config: RunnableConfig) -> dict:
         if last_error:
             logger.error(f"buyer_agent_llm_failed | run_id={state.get('run_id')} | total_duration={total_elapsed:.2f}s | error={last_error}")
             error_str = str(last_error).lower()
-            if "timeout" in error_str or "deadline" in error_str or "504" in error_str:
+            if "content_filter" in error_str or "responsibleaipolicyviolation" in error_str or "content management policy" in error_str:
+                error_reason = "AGENT_MODEL_CONTENT_FILTER"
+            elif "timeout" in error_str or "deadline" in error_str or "504" in error_str:
                 error_reason = "LLM_TIMEOUT"
             elif "404" in error_str or "not found" in error_str or "unavailable" in error_str:
                 error_reason = "LLM_MODEL_UNAVAILABLE"
@@ -163,9 +170,11 @@ async def run_llm_node(state: BuyerAgentState, config: RunnableConfig) -> dict:
         
     import json
     from langchain_core.messages import AIMessage
-    
-    # Save the chosen action to history so the LLM remembers it next time
-    ai_msg = AIMessage(content=f"I took action: {action.action.value} with args: {json.dumps(action.model_dump())}")
+
+    # Store a concise action summary. We deliberately exclude the raw 'reason' text
+    # because LLM-generated reason strings may accumulate adversarial-looking language
+    # across multiple rounds and trigger Azure's content filter on later invocations.
+    ai_msg = AIMessage(content=f"Action taken: {action.action.value} | proposed_price: {action.proposed_unit_price}")
     
     return {
         "current_action": action,
@@ -174,6 +183,33 @@ async def run_llm_node(state: BuyerAgentState, config: RunnableConfig) -> dict:
         "policy_reasons": [],
         "messages": [ai_msg]
     }
+
+
+async def route_after_action(state: BuyerAgentState) -> str:
+    if state.get("step_count", 0) > 4:
+        return "END"
+        
+    if state.get("status") in ["completed", "failed"]:
+        return "END"
+        
+    action = state.get("current_action")
+    if not action:
+        return "END"
+        
+    if action.action in [ActionType.PROPOSE_AGREEMENT, ActionType.COUNTER_PROPOSAL, ActionType.ACCEPT_COUNTER]:
+        return "validate_proposal"
+        
+    return "run_llm"
+
+
+def route_policy_decision(state: BuyerAgentState) -> str:
+    if state.get("step_count", 0) > 4:
+        return "submit_proposal" # Force submission of whatever we have, or let it fail downstream
+        
+    decision = state.get("policy_decision")
+    if decision in ["allow", "human_approval_required"]:
+        return "submit_proposal"
+    return "proposal_recovery"
 
 
 async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) -> dict:
@@ -189,7 +225,7 @@ async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) ->
         logger.info(f"execute_action | run_id={state.get('run_id')} | action=STOP | reason={action.reason}")
         return {"status": "completed"}
 
-    elif action.action == ActionType.REJECT_NEGOTIATION:
+    elif action.action == ActionType.REJECT_NEGOTIATION or action.action == ActionType.ABANDON_NEGOTIATION:
         # Buyer explicitly walks away from the negotiation
         logger.info(f"execute_action | run_id={state.get('run_id')} | action=REJECT_NEGOTIATION | reason={action.reason}")
         session = config["configurable"]["session"]
@@ -207,6 +243,15 @@ async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) ->
             except Exception as e:
                 logger.warning(f"execute_action | REJECT_NEGOTIATION could not persist rejection: {e}")
         return {"status": "completed", "negotiation_status": "REJECTED"}
+        
+    elif action.action == ActionType.CHANGE_STRATEGY:
+        logger.info(f"execute_action | run_id={state.get('run_id')} | action=CHANGE_STRATEGY | strategy={action.reason}")
+        # Reject deterministically so it loops back, but persist the strategy
+        return {
+            "strategy": action.reason,
+            "policy_decision": "DENY",
+            "policy_reasons": ["Strategy changed. Please provide your next action based on this new strategy."]
+        }
 
     elif action.action == ActionType.SEARCH_PRODUCTS:
         logger.info(f"execute_action | run_id={state.get('run_id')} | action=SEARCH_PRODUCTS")
@@ -215,8 +260,8 @@ async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) ->
         if state.get("candidate_products"):
             logger.warning(f"execute_action | run_id={state.get('run_id')} | Redundant SEARCH_PRODUCTS intercepted.")
             return {
-                "policy_decision": "DENY", 
-                "policy_reasons": ["You already discovered products. You MUST choose one using the SELECT_PRODUCT action."]
+                "policy_decision": "DENY",
+                "policy_reasons": ["Products have already been discovered. Please use the SELECT_PRODUCT action to choose one."]
             }
             
         # Actually hit the database via the tool (which uses ProductService)
@@ -227,7 +272,19 @@ async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) ->
                 config=config
             )
             from langchain_core.messages import HumanMessage
-            tool_msg = HumanMessage(content=f"SEARCH_PRODUCTS completed. Found {len(results)} products matching '{query}'.")
+            tool_msg = HumanMessage(content=f"Search completed. Found {len(results)} products matching '{query}'.")
+            
+            session = config["configurable"]["session"]
+            await record_event(
+                session=session,
+                event_type=AuditEventType.BUYER_TOOL_INVOKED, 
+                actor_type="BUYER_AGENT",
+                actor_id=state["intent"].buyer_id,
+                merchant_id=state["intent"].merchant_id,
+                metadata={"tool": "SEARCH_PRODUCTS", "query": query}
+            )
+            await session.commit()
+            
             return {"candidate_products": results, "messages": [tool_msg]}
         except Exception as e:
             return {"policy_decision": "deny", "policy_reasons": [f"Search failed: {str(e)}"]}
@@ -243,6 +300,18 @@ async def execute_action_node(state: BuyerAgentState, config: RunnableConfig) ->
             )
             from langchain_core.messages import HumanMessage
             tool_msg = HumanMessage(content=f"INSPECT_PRODUCT result: {result}")
+            
+            session = config["configurable"]["session"]
+            await record_event(
+                session=session,
+                event_type=AuditEventType.BUYER_TOOL_INVOKED, 
+                actor_type="BUYER_AGENT",
+                actor_id=state["intent"].buyer_id,
+                merchant_id=state["intent"].merchant_id,
+                metadata={"tool": "INSPECT_PRODUCT", "product_id": str(action.product_id)}
+            )
+            await session.commit()
+            
             return {"messages": [tool_msg]}
         except Exception as e:
             return {"policy_decision": "deny", "policy_reasons": [f"INSPECT_PRODUCT failed: {str(e)}"]}
@@ -294,12 +363,32 @@ async def validate_proposal_node(state: BuyerAgentState, config: RunnableConfig)
         if action.proposed_unit_price is None:
             raise ValueError("Unit price is required.")
             
-        unit_price = Decimal(action.proposed_unit_price).quantize(Decimal("0.01"))
-        discount = Decimal(action.proposed_discount_percent or "0").quantize(Decimal("0.01"))
+        # Clean the string of commas and currency symbols just in case
+        clean_price = str(action.proposed_unit_price).replace(',', '').replace(' ', '').replace('INR', '').replace('$', '')
+        clean_discount = str(action.proposed_discount_percent or "0").replace(',', '').replace('%', '')
+            
+        unit_price = Decimal(clean_price).quantize(Decimal("0.01"))
+        discount = Decimal(clean_discount).quantize(Decimal("0.01"))
         qty = Decimal(intent.quantity)
         
         # DETERMINISTIC TOTAL CALCULATION (Ignore whatever total the LLM might have thought)
         total = (unit_price * qty).quantize(Decimal("0.01"))
+        
+        # Deadlock / Loop Validation
+        prev_offer = state.get("previous_offer")
+        if prev_offer is not None:
+            if unit_price == prev_offer:
+                logger.warning(f"validate_proposal_node | run_id={state.get('run_id')} | OFFER_UNCHANGED: {unit_price}")
+                return {
+                    "policy_decision": "DENY",
+                    "policy_reasons": [f"OFFER_UNCHANGED: Your proposed price ({unit_price}) is exactly the same as your previous offer. You must change your offer or choose a different action."]
+                }
+            if unit_price < prev_offer:
+                logger.warning(f"validate_proposal_node | run_id={state.get('run_id')} | OFFER_NOT_IMPROVED: {unit_price} < {prev_offer}")
+                return {
+                    "policy_decision": "DENY",
+                    "policy_reasons": [f"OFFER_NOT_IMPROVED: Your proposed price ({unit_price}) is lower than your previous offer ({prev_offer}). As a buyer, you cannot lower your offer backwards. You must increase your offer or choose a different action."]
+                }
         
         # 1. Evaluate Buyer Constraints
         constraint_engine = BuyerConstraintEngine()
@@ -333,11 +422,13 @@ async def submit_proposal_node(state: BuyerAgentState, config: RunnableConfig) -
     
     try:
         if action.action == ActionType.PROPOSE_AGREEMENT and not state["negotiation_id"]:
+            clean_price = str(action.proposed_unit_price).replace(',', '').replace(' ', '').replace('INR', '').replace('$', '')
+            clean_discount = str(action.proposed_discount_percent or "0").replace('%', '').replace(' ', '')
             payload = NegotiationMessagePayload(
                 product_id=state.get("selected_product_id") or action.product_id,
                 quantity=intent.quantity,
-                unit_price=Decimal(action.proposed_unit_price),
-                discount_percent=Decimal(action.proposed_discount_percent or "0"),
+                unit_price=Decimal(clean_price).quantize(Decimal("0.01")),
+                discount_percent=Decimal(clean_discount),
                 total_amount=state["deterministic_total"],
                 currency=intent.preferred_currency
             )
@@ -357,12 +448,14 @@ async def submit_proposal_node(state: BuyerAgentState, config: RunnableConfig) -
                 "status": "completed"
             }
         
-        elif action.action == ActionType.COUNTER_PROPOSAL and state["negotiation_id"]:
+        elif action.action in (ActionType.COUNTER_PROPOSAL, ActionType.PROPOSE_AGREEMENT) and state["negotiation_id"]:
+            clean_price = str(action.proposed_unit_price).replace(',', '').replace(' ', '').replace('INR', '').replace('$', '')
+            clean_discount = str(action.proposed_discount_percent or "0").replace('%', '').replace(' ', '')
             payload = NegotiationMessagePayload(
                 product_id=state["selected_product_id"],
                 quantity=intent.quantity,
-                unit_price=Decimal(action.proposed_unit_price),
-                discount_percent=Decimal(action.proposed_discount_percent or "0"),
+                unit_price=Decimal(clean_price).quantize(Decimal("0.01")),
+                discount_percent=Decimal(clean_discount),
                 total_amount=state["deterministic_total"],
                 currency=intent.preferred_currency
             )
@@ -421,14 +514,47 @@ async def read_negotiation_state_node(state: BuyerAgentState, config: RunnableCo
         product_id = neg.product_id if neg else None
         
         # If the latest is from the merchant, put it in state for the LLM
-        if latest.sender_type == SenderType.MERCHANT_AGENT.value:
-            return {
-                "selected_product_id": product_id,
-                "merchant_counter": latest.payload,
-                "negotiation_status": latest.message_type,
-                "negotiation_round": neg.round_count if neg else 0
-            }
             
-        return {"selected_product_id": product_id}
+        # Enhanced Deadlock & Progress Tracking
+        buyer_offers = [m for m in messages if m.sender_type == SenderType.BUYER_AGENT.value and m.message_type in (MessageType.OFFER.value, MessageType.COUNTER_OFFER.value)]
+        merchant_offers = [m for m in messages if m.sender_type == SenderType.MERCHANT_AGENT.value and m.message_type == MessageType.COUNTER_OFFER.value]
+        
+        prev_offer = Decimal(buyer_offers[-1].payload.get("unit_price")) if buyer_offers else None
+        opp_offer = Decimal(merchant_offers[-1].payload.get("unit_price")) if merchant_offers else None
+        price_gap = abs(opp_offer - prev_offer) if prev_offer and opp_offer else None
+        
+        repeated = 0
+        if prev_offer:
+            for m in reversed(buyer_offers):
+                if Decimal(m.payload.get("unit_price")) == prev_offer:
+                    repeated += 1
+                else:
+                    break
+                    
+        status_label = "PROGRESSING"
+        if neg and neg.round_count >= 3:
+            if repeated >= 2:
+                status_label = "DEADLOCKED"
+            elif price_gap is not None and len(buyer_offers) >= 2 and len(merchant_offers) >= 2:
+                prev_gap = abs(Decimal(merchant_offers[-2].payload.get("unit_price")) - Decimal(buyer_offers[-2].payload.get("unit_price")))
+                if prev_gap > 0 and (prev_gap - price_gap) / prev_gap < Decimal("0.05"):
+                    status_label = "STALLED"
+                    if neg.round_count >= 6:
+                        status_label = "DEADLOCKED"
+
+        updates = {
+            "selected_product_id": product_id,
+            "previous_offer": prev_offer,
+            "opponent_offer": opp_offer,
+            "price_gap": price_gap,
+            "repeated_offer_count": repeated,
+            "negotiation_status": status_label,
+            "negotiation_round": neg.round_count if neg else 0
+        }
+        
+        if latest.sender_type == SenderType.MERCHANT_AGENT.value:
+            updates["merchant_counter"] = latest.payload
+            
+        return updates
     except Exception as e:
         return {"status": "failed", "error_reason": f"Failed to read negotiation: {str(e)}"}

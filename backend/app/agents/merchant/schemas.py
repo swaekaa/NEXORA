@@ -54,6 +54,8 @@ class MerchantActionType(str, Enum):
     REJECT_PROPOSAL = "REJECT_PROPOSAL"
     COUNTER_PROPOSAL = "COUNTER_PROPOSAL"
     REQUEST_HUMAN_APPROVAL = "REQUEST_HUMAN_APPROVAL"
+    CHANGE_STRATEGY = "CHANGE_STRATEGY"
+    ABANDON_NEGOTIATION = "ABANDON_NEGOTIATION"
 
 
 class MerchantAgentAction(BaseModel):
@@ -87,6 +89,14 @@ class MerchantAgentState(TypedDict):
     error_reason: str | None
     
     proposal_revisions: int  # Track how many times a counter-offer was rejected by PolicyEngine
+    
+    # Structured Negotiation State
+    previous_counteroffer: Decimal | None
+    buyer_offer: Decimal | None
+    price_gap: Decimal | None
+    repeated_offer_count: int
+    negotiation_status: str | None
+    strategy: str | None
     
     # LLM Structured Action
     current_action: MerchantAgentAction | None

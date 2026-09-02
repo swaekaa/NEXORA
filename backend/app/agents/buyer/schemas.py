@@ -25,6 +25,8 @@ class BuyerIntent(BaseModel):
     preferred_currency: str = Field("INR", pattern="^INR$")
     requirements: list[str] = Field(default_factory=list)
     preferences: list[str] = Field(default_factory=list)
+    target_unit_price: Decimal | None = None
+    reservation_unit_price: Decimal | None = None
 
 
 class ActionType(str, Enum):
@@ -39,6 +41,8 @@ class ActionType(str, Enum):
     ACCEPT_COUNTER = "ACCEPT_COUNTER"
     COUNTER_PROPOSAL = "COUNTER_PROPOSAL"
     REJECT_NEGOTIATION = "REJECT_NEGOTIATION"  # Buyer explicitly walks away
+    ABANDON_NEGOTIATION = "ABANDON_NEGOTIATION" # Same as REJECT_NEGOTIATION
+    CHANGE_STRATEGY = "CHANGE_STRATEGY"
     STOP = "STOP"
 
 
@@ -85,6 +89,14 @@ class BuyerAgentState(TypedDict):
     selected_product_id: uuid.UUID | None
     proposal_revisions: int  # Track how many times a proposal was rejected and revised
     negotiation_round: int
+    
+    # Structured Negotiation State
+    target_unit_price: Decimal | None
+    reservation_unit_price: Decimal | None
+    previous_offer: Decimal | None
+    opponent_offer: Decimal | None
+    price_gap: Decimal | None
+    repeated_offer_count: int
 
     # Agent strategy — what the agent has decided to do in this negotiation
     strategy: str | None

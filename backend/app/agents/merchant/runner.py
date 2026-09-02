@@ -124,6 +124,15 @@ async def run_merchant_agent(session: AsyncSession, negotiation_id: uuid.UUID) -
         "status": "in_progress",
         "error_reason": None,
         "proposal_revisions": 0,
+        
+        # Structured Negotiation State
+        "previous_counteroffer": None,
+        "buyer_offer": None,
+        "price_gap": None,
+        "repeated_offer_count": 0,
+        "negotiation_status": None,
+        "strategy": None,
+        
         "current_action": None,
         "deterministic_total": None,
         "policy_decision": None,
@@ -145,9 +154,27 @@ async def run_merchant_agent(session: AsyncSession, negotiation_id: uuid.UUID) -
         logger.info(f"MERCHANT_RUNNER_EXITED | negotiation_id={negotiation_id}")
         return final_state
     except Exception as e:
-        duration = time.time() - start_time
-        logger.error(f"MERCHANT_AGENT_FAILED | negotiation_id={negotiation_id} | exception_type={type(e).__name__} | exception_message={str(e)} | duration={duration:.2f}s")
-        logger.error(f"Merchant Agent Graph execution failed: {e}", exc_info=True)
+        logger.error(f"Merchant agent execution failed: {str(e)}", exc_info=True)
+        from app.database.connection import AsyncSessionLocal
+        from app.services.audit_service import record_event
+        from app.schemas.audit import AuditEventType
+        
+        async with AsyncSessionLocal() as fresh_session:
+            negotiation = await get_negotiation(fresh_session, negotiation_id)
+            if negotiation and negotiation.state not in NegotiationState.TERMINAL_STATES:
+                negotiation.state = NegotiationState.EXPIRED.value
+                await fresh_session.commit()
+                
+            await record_event(
+                session=fresh_session,
+                event_type=AuditEventType.NEGOTIATION_FAILED,
+                actor_type="SYSTEM",
+                actor_id=None,
+                merchant_id=negotiation.merchant_id if negotiation else None,
+                negotiation_id=negotiation_id,
+                metadata={"error": str(e), "source": "uncaught_exception"}
+            )
+            
         initial_state["status"] = "failed"
         initial_state["error_reason"] = f"Graph Crash: {str(e)}"
         return initial_state
