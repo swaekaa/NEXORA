@@ -15,7 +15,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<AppShell />}>
-          <Route index element={<Navigate to="/office" replace />} />
+          <Route index element={<Navigate to="/policies" replace />} />
           <Route path="office" element={<NegotiationDetail />} />
           <Route path="agents" element={<BuyerPage />} />
           <Route path="negotiations/:id" element={<NegotiationDetail />} />
