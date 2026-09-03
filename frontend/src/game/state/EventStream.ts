@@ -241,14 +241,15 @@ export class LiveEventStream implements NegotiationEventStream {
               isHistorical: this.isInitialFetch,
             };
             this.callbacks.forEach(cb => cb(startedEvent));
-          } else if (audit.event_type === 'BUYER_TOOL_INVOKED') {
+          } else if (audit.event_type === 'BUYER_TOOL_INVOKED' || audit.event_type === 'MERCHANT_TOOL_INVOKED') {
+            const agentName = audit.event_type === 'BUYER_TOOL_INVOKED' ? 'buyer' : 'merchant';
             const toolEvent: NegotiationEvent = {
               id: audit.id,
               timestamp: audit.created_at,
-              type: 'message',
-              agent: 'buyer',
+              type: 'tool_call',
+              agent: agentName,
               state: 'thinking',
-              message: `Buyer used tool: ${audit.metadata?.tool || 'unknown'}`,
+              message: `${agentName === 'buyer' ? 'Buyer' : 'Merchant'} used tool: ${audit.metadata?.tool || 'unknown'}`,
               isHistorical: this.isInitialFetch,
             };
             this.callbacks.forEach(cb => cb(toolEvent));

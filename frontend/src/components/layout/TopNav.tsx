@@ -9,6 +9,7 @@ export default function TopNav() {
       case '/office': return 'border-[#5BC0DE] text-[#333333] shadow-[3px_3px_0_0_#5BC0DE] bg-[#5BC0DE]/10';
       case '/deals': return 'border-[#5CB85C] text-[#333333] shadow-[3px_3px_0_0_#5CB85C] bg-[#5CB85C]/10';
       case '/agents': return 'border-[#F0AD4E] text-[#333333] shadow-[3px_3px_0_0_#F0AD4E] bg-[#F0AD4E]/10';
+      case '/tools': return 'border-[#FF69B4] text-[#333333] shadow-[3px_3px_0_0_#FF69B4] bg-[#FF69B4]/10';
       case '/policies': return 'border-[#9B59B6] text-[#333333] shadow-[3px_3px_0_0_#9B59B6] bg-[#9B59B6]/10';
       case '/audit': return 'border-[#D9534F] text-[#333333] shadow-[3px_3px_0_0_#D9534F] bg-[#D9534F]/10';
       default: return 'border-[#333333] text-[#333333] shadow-[3px_3px_0_0_#333333] bg-[#333333]/10';
@@ -48,6 +49,9 @@ export default function TopNav() {
           </NavLink>
           <NavLink to="/agents" className={navLinkClass('/agents')}>
             Agents
+          </NavLink>
+          <NavLink to="/tools" className={navLinkClass('/tools')}>
+            Tools
           </NavLink>
           <NavLink to="/policies" className={navLinkClass('/policies')}>
             Policies

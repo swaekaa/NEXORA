@@ -8,6 +8,7 @@ import AgreementDetail from './pages/AgreementDetail';
 import PolicyPage from './pages/PolicyPage';
 import AuditTrailPage from './pages/AuditTrailPage';
 import DealReport from './pages/DealReport';
+import ToolsPage from './pages/ToolsPage';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="deals/:id" element={<AgreementDetail />} />
           <Route path="policies" element={<PolicyPage />} />
           <Route path="audit" element={<AuditTrailPage />} />
+          <Route path="tools" element={<ToolsPage />} />
         </Route>
         <Route path="/deals/:agreementId/report" element={<DealReport />} />
       </Routes>

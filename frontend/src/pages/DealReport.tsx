@@ -334,9 +334,9 @@ export default function DealReport({ agreementId: propAgreementId, onClose }: { 
           <h3 className="font-bold uppercase mb-2">Audit Event Log Summary</h3>
           <div className="space-y-1">
              {auditEvents.slice(0, 15).map(e => (
-                <div key={e.id} className="flex gap-4">
-                  <span className="w-40">{new Date(e.created_at).toLocaleString()}</span>
-                  <span className="font-bold w-48">{e.event_type}</span>
+                <div key={e.id} className="grid grid-cols-[160px_240px_1fr] gap-4 mb-2 items-start">
+                  <span className="text-gray-500">{new Date(e.created_at).toLocaleString()}</span>
+                  <span className="font-bold break-all">{e.event_type}</span>
                   <span className="truncate">{e.actor_type}</span>
                 </div>
              ))}
