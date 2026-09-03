@@ -157,6 +157,23 @@ This is the heart of NEXORA. Our deterministic engine features a fully-fledged d
 
 ---
 
+## 🛠️ Agent Tools (LangGraph Function Calling)
+
+Rather than just chatting, our AI agents interact with the strict, deterministic backend using highly-typed tool calls (powered by LangGraph and OpenAI/Anthropic structured outputs). These tools enforce the boundaries of the negotiation.
+
+### 🛒 Buyer Agent Tools
+* **`validate_proposal`**: A "dry-run" tool that allows the Buyer LLM to check if an offer it wants to make actually fits within the strict constraints (Max Budget, Quantity) provided by the human buyer. If it fails, the deterministic engine throws an error *back to the LLM* so it can try again, preventing invalid offers from ever reaching the Merchant.
+* **`propose_agreement`**: Officially submits the opening offer to the Merchant.
+* **`counter_proposal`**: Submits a counter-offer in response to the Merchant.
+* **`accept_agreement` & `reject_agreement`**: Ends the negotiation with success or failure.
+
+### 🏬 Merchant Agent Tools
+* **`merchant_evaluate_offer`**: A tool that checks the Buyer's latest offer against the Merchant's strict `PolicyFloor` (e.g., minimum price, maximum discount). The deterministic engine tells the Merchant LLM whether the offer is `APPROVED` or `VIOLATES_POLICY`, and gives the LLM the exact reason why, so it can formulate a proper counter-offer.
+* **`counter_proposal`**: Submits a counter-offer to the Buyer based on the policy evaluation.
+* **`accept_agreement` & `reject_agreement`**: Ends the negotiation with success or failure.
+
+---
+
 ## Problem Statement
 
 As we move into an agentic future, AI systems will inevitably start negotiating and executing commercial transactions autonomously. The problem? Today's payment infrastructure has absolutely no answer for this.
