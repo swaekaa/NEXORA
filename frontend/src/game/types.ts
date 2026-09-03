@@ -15,6 +15,7 @@ export type AgentState =
 export type NegotiationEventType =
   | "negotiation_started"
   | "message"
+  | "tool_call"
   | "offer"
   | "counteroffer"
   | "policy_check"

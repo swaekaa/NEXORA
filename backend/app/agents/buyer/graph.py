@@ -11,7 +11,8 @@ from app.agents.buyer.nodes import (
     run_llm_node, 
     validate_proposal_node,
     submit_proposal_node,
-    read_negotiation_state_node
+    read_negotiation_state_node,
+    route_after_action
 )
 from app.agents.buyer.policy_node import policy_check_node, proposal_recovery_node, route_policy_decision
 from app.agents.buyer.schemas import BuyerAgentState
@@ -46,17 +47,6 @@ def create_buyer_agent_graph() -> StateGraph:
     workflow.add_edge("run_llm", "execute_action")
     
     # After action execution, we check what it did
-    def route_after_action(state: BuyerAgentState):
-        if state["status"] in ["completed", "failed"]:
-            return "END"
-            
-        action = state["current_action"]
-        if action.action in ["PROPOSE_AGREEMENT", "COUNTER_PROPOSAL", "ACCEPT_COUNTER"]:
-            return "validate_proposal"
-            
-        # Otherwise, go back to LLM to take next action (like searching)
-        return "run_llm"
-        
     workflow.add_conditional_edges(
         "execute_action",
         route_after_action,

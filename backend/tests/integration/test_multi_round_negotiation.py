@@ -1,9 +1,13 @@
 """
-Integration tests for Phase 14: Multi-Round Negotiation Demo
+Integration tests for Multi-Round Negotiation
 
-Tests the deterministic bounds, counter-offer mechanisms, and the
-NEGOTIATION_DEMO_MIN_ROUNDS enforcement strategy.
+Tests the deterministic bounds, counter-offer mechanisms, and agentic negotiation
+where agents make genuine decisions without scripted round count enforcement.
+
+Previously tested NEGOTIATION_DEMO_MIN_ROUNDS enforcement (now removed as it was
+demo scripting, not agentic behavior). Tests now verify genuine agent freedom.
 """
+
 import uuid
 from decimal import Decimal
 from unittest.mock import MagicMock, patch, AsyncMock

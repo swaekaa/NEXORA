@@ -23,7 +23,7 @@ from app.policies.enums import PolicyDecision
 @pytest.fixture
 def mock_llm():
     with patch("app.agents.merchant.nodes.get_llm") as mock_get_llm:
-        mock_model = MagicMock()
+        mock_model = AsyncMock()
         mock_get_llm.return_value.with_structured_output.return_value = mock_model
         yield mock_model
 
@@ -84,7 +84,7 @@ async def test_merchant_accepts_valid_proposal(mock_create_agreement, mock_appen
     base_intent.buyer_proposed_unit_price = Decimal("10500.00")
     
     # Mock LLM to ACCEPT
-    mock_llm.invoke.return_value = MerchantAgentAction(
+    mock_llm.ainvoke.return_value = MerchantAgentAction(
         action=MerchantActionType.ACCEPT_PROPOSAL,
         reason="Looks good"
     )
@@ -103,7 +103,7 @@ async def test_merchant_accepts_valid_proposal(mock_create_agreement, mock_appen
 
 @patch("app.agents.merchant.nodes.append_negotiation_message", new_callable=AsyncMock)
 async def test_merchant_rejects_proposal(mock_append, mock_llm, base_state, graph_config):
-    mock_llm.invoke.return_value = MerchantAgentAction(
+    mock_llm.ainvoke.return_value = MerchantAgentAction(
         action=MerchantActionType.REJECT_PROPOSAL,
         reason="No thanks"
     )
@@ -120,7 +120,7 @@ async def test_merchant_rejects_proposal(mock_append, mock_llm, base_state, grap
 async def test_merchant_counter_offer_blocked_by_policy(mock_llm, base_state, graph_config):
     # Mock LLM to Counter BELOW minimum price
     # The policy should DENY and trigger a recovery loop
-    mock_llm.invoke.return_value = MerchantAgentAction(
+    mock_llm.ainvoke.return_value = MerchantAgentAction(
         action=MerchantActionType.COUNTER_PROPOSAL,
         proposed_quantity=100,
         proposed_unit_price="9500.00",  # Min is 10000
@@ -141,7 +141,7 @@ async def test_merchant_counter_offer_blocked_by_policy(mock_llm, base_state, gr
 @patch("app.agents.merchant.nodes.append_negotiation_message", new_callable=AsyncMock)
 async def test_merchant_counter_offer_allowed_by_policy(mock_append, mock_llm, base_state, graph_config):
     # Mock LLM to Counter ABOVE minimum price
-    mock_llm.invoke.return_value = MerchantAgentAction(
+    mock_llm.ainvoke.return_value = MerchantAgentAction(
         action=MerchantActionType.COUNTER_PROPOSAL,
         proposed_quantity=100,
         proposed_unit_price="10500.00",
@@ -159,12 +159,12 @@ async def test_merchant_counter_offer_allowed_by_policy(mock_append, mock_llm, b
     mock_append.assert_called_once()
 
 
-@patch("app.agents.merchant.nodes.create_approval_request", new_callable=AsyncMock)
-async def test_merchant_requires_human_approval(mock_create_approval, mock_llm, base_intent, base_state, graph_config):
+@patch("app.agents.merchant.nodes.append_negotiation_message", new_callable=AsyncMock)
+async def test_merchant_requires_human_approval(mock_append, mock_llm, base_intent, base_state, graph_config):
     # Make autonomous limit small
     base_intent.policy_maximum_autonomous_transaction = Decimal("5000.0")
     
-    mock_llm.invoke.return_value = MerchantAgentAction(
+    mock_llm.ainvoke.return_value = MerchantAgentAction(
         action=MerchantActionType.COUNTER_PROPOSAL,
         proposed_quantity=100,
         proposed_unit_price="10500.00",
@@ -178,4 +178,4 @@ async def test_merchant_requires_human_approval(mock_create_approval, mock_llm, 
     assert result["policy_decision"] == PolicyDecision.HUMAN_APPROVAL_REQUIRED.value
     assert result.get("status") == "completed"
     
-    mock_create_approval.assert_called_once()
+    mock_append.assert_called_once()

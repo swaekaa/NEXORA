@@ -162,7 +162,14 @@ export class LiveEventStream implements NegotiationEventStream {
       allEvents.sort((a, b) => a.timestamp - b.timestamp);
 
       // Convert backend records to frontend events
-      for (const record of allEvents) {
+      for (let i = 0; i < allEvents.length; i++) {
+        const record = allEvents[i];
+        
+        // Treat events as historical during the initial fetch, EXCEPT for the very last event.
+        // This ensures the latest message/offer always triggers a dialog bubble and animation 
+        // when the page loads, which is especially important for the very first message of a new negotiation.
+        const isHistorical = this.isInitialFetch && i < allEvents.length - 1;
+
         if (record.type === 'message_record') {
           const msg = record.data;
           this.processedMessageIds.add(msg.id);
@@ -191,7 +198,7 @@ export class LiveEventStream implements NegotiationEventStream {
             type: eventType,
             message: msg.content || undefined,
             state: state,
-            isHistorical: this.isInitialFetch,
+            isHistorical: isHistorical,
           };
 
           if (msg.payload && (msg.payload.unit_price || msg.payload.quantity)) {
@@ -209,27 +216,61 @@ export class LiveEventStream implements NegotiationEventStream {
           const audit = record.data;
           this.processedMessageIds.add(audit.id);
 
-          if (audit.event_type === 'POLICY_CHECK') {
+          if (audit.event_type === 'POLICY_CHECK' || audit.event_type === 'POLICY_DECISION') {
             const policyCheck: NegotiationEvent = { 
               id: audit.id, 
               timestamp: audit.created_at, 
               type: 'policy_check', 
               state: 'policy_check',
-              isHistorical: this.isInitialFetch,
+              isHistorical: isHistorical,
             };
             this.callbacks.forEach(cb => cb(policyCheck));
             
-            const decision = audit.metadata?.decision;
+            const decision = audit.metadata?.policy_decision || audit.metadata?.decision;
             if (decision) {
               const policyResult: NegotiationEvent = { 
                 id: audit.id + '-result', 
                 timestamp: audit.created_at, 
                 type: 'policy_result', 
                 policy: { status: decision.toLowerCase() },
-                isHistorical: this.isInitialFetch,
+                isHistorical: isHistorical,
               };
               this.callbacks.forEach(cb => cb(policyResult));
             }
+          } else if (audit.event_type === 'NEGOTIATION_STARTED') {
+            const startedEvent: NegotiationEvent = {
+              id: audit.id,
+              timestamp: audit.created_at,
+              type: 'negotiation_started',
+              agent: 'buyer',
+              state: 'thinking',
+              message: `Buyer agent started. Looking for: ${audit.metadata?.product_query || 'product'}`,
+              isHistorical: isHistorical,
+            };
+            this.callbacks.forEach(cb => cb(startedEvent));
+          } else if (audit.event_type === 'BUYER_TOOL_INVOKED' || audit.event_type === 'MERCHANT_TOOL_INVOKED') {
+            const agentName = audit.event_type === 'BUYER_TOOL_INVOKED' ? 'buyer' : 'merchant';
+            const toolEvent: NegotiationEvent = {
+              id: audit.id,
+              timestamp: audit.created_at,
+              type: 'tool_call',
+              agent: agentName,
+              state: 'thinking',
+              message: `${agentName === 'buyer' ? 'Buyer' : 'Merchant'} used tool: ${audit.metadata?.tool || 'unknown'}`,
+              isHistorical: this.isInitialFetch,
+            };
+            this.callbacks.forEach(cb => cb(toolEvent));
+          } else if (audit.event_type === 'MERCHANT_DECISION') {
+            const merchantEvent: NegotiationEvent = {
+              id: audit.id,
+              timestamp: audit.created_at,
+              type: 'message',
+              agent: 'merchant',
+              state: 'thinking',
+              message: `Merchant decided: ${audit.metadata?.action || 'unknown'}`,
+              isHistorical: this.isInitialFetch,
+            };
+            this.callbacks.forEach(cb => cb(merchantEvent));
           }
         }
       }

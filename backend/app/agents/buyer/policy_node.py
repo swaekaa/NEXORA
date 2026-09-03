@@ -34,11 +34,11 @@ async def policy_check_node(state: BuyerAgentState, config: RunnableConfig) -> d
 
 def route_policy_decision(state: BuyerAgentState) -> str:
     """Conditional router based on policy outcome."""
-    if state["status"] in ["failed", "completed"]:
+    if state.get("status") in ["failed", "completed"]:
         return "END"
         
     action = state["current_action"]
-    if action.action == ActionType.STOP:
+    if action.action in (ActionType.STOP, ActionType.REJECT_NEGOTIATION):
         return "END"
     elif action.action not in (ActionType.PROPOSE_AGREEMENT, ActionType.COUNTER_PROPOSAL, ActionType.ACCEPT_COUNTER):
         return "run_llm"
@@ -53,6 +53,7 @@ def route_policy_decision(state: BuyerAgentState) -> str:
         return "proposal_recovery"
         
     return "END"
+
 
 
 def proposal_recovery_node(state: BuyerAgentState, config: RunnableConfig) -> dict:

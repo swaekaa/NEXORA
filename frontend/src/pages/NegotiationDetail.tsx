@@ -11,6 +11,15 @@ import { useNegotiationSession } from '../hooks/useNegotiationSession';
 import { DealApprovedModal } from '../components/agreement/DealApprovedModal';
 import { DealFailedModal } from '../components/agreement/DealFailedModal';
 
+// ─── Demo Seed Data ───────────────────────────────────────────────────────────
+// These UUIDs correspond to the seeded demo merchant and buyer in the database.
+// They are stable for the demo environment. Change here if the seed changes.
+const DEMO_MERCHANT_ID = "987f6543-e21b-34c5-b678-426614174999";
+const DEMO_BUYER_ID = "123e4567-e89b-12d3-a456-426614174000";
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode: boolean, simulationMode: 'setup' | 'live' | 'demo', children?: React.ReactNode }) => {
   const { state } = useGame();
   const activityLogRef = useRef<HTMLDivElement>(null);
@@ -135,7 +144,7 @@ const NegotiationContent = ({ setupMode, simulationMode, children }: { setupMode
         {showModal && activeNegotiationId && (
           <DealApprovedModal 
             negotiationId={activeNegotiationId} 
-            merchantId="987f6543-e21b-34c5-b678-426614174999" 
+            merchantId={DEMO_MERCHANT_ID} 
             onDismiss={() => {
                setShowModal(false);
             }} 
@@ -220,8 +229,8 @@ export default function NegotiationDetail() {
       setErrorMsg(null);
       setSimulationMode('live');
       
-      const merchant_id = "987f6543-e21b-34c5-b678-426614174999";
-      const buyer_id = "123e4567-e89b-12d3-a456-426614174000";
+      const merchant_id = DEMO_MERCHANT_ID;
+      const buyer_id = DEMO_BUYER_ID;
 
       // 1. Create/activate Merchant Policy
       await api.policies.create(merchant_id, {
@@ -463,6 +472,7 @@ function BottomSection({ startDemo: _startDemo, simulationMode: _simulationMode 
     e.type === 'offer' || 
     e.type === 'counteroffer' || 
     e.type === 'policy_check' || 
+    e.type === 'tool_call' ||
     e.type === 'agreement_created' || 
     e.type === 'negotiation_failed'
   );
@@ -491,6 +501,7 @@ function BottomSection({ startDemo: _startDemo, simulationMode: _simulationMode 
     if (evt.type === 'offer') { label = 'OPENING OFFER'; color = '#5BC0DE'; }
     if (evt.type === 'counteroffer') { label = 'COUNTEROFFER'; color = '#D9534F'; }
     if (evt.type === 'policy_check') { label = 'POLICY CHECK'; color = '#F0AD4E'; }
+    if (evt.type === 'tool_call') { label = 'TOOL INVOCATION'; color = '#F0AD4E'; }
     if (evt.type === 'agreement_created') { label = 'ACCEPTED'; color = '#5CB85C'; }
     if (evt.type === 'negotiation_failed') { label = 'FAILED'; color = '#333333'; }
 
@@ -548,9 +559,9 @@ function BottomSection({ startDemo: _startDemo, simulationMode: _simulationMode 
                   </div>
                   <div className="text-[9px] text-[#888888] font-mono mt-1 bg-[#EAE8DD]/90 px-1 rounded-sm">{timeStr}</div>
                   
-                  {node.price && (
-                    <div className="text-[11px] font-bold text-[#5BC0DE] mt-1 bg-[#111111] border-2 border-[#333333] px-2 py-0.5 text-white shadow-[2px_2px_0_0_rgba(51,51,51,1)]">
-                      ₹{Number(node.price).toLocaleString('en-IN')}
+                  {(node.offer?.unitPrice || node.type === 'tool_call') && (
+                    <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-[#333333] text-white px-3 py-1 font-bold tracking-wider text-[11px] shadow-[2px_2px_0_0_rgba(17,17,17,0.5)] whitespace-nowrap">
+                      {node.type === 'tool_call' ? 'TOOL' : `₹${Number(node.offer?.unitPrice).toLocaleString()}`}
                     </div>
                   )}
                 </div>

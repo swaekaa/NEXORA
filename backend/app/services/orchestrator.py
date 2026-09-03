@@ -69,6 +69,13 @@ async def run_negotiation_loop(negotiation_id: uuid.UUID, intent: BuyerIntent):
                     logger.info(f"AGENT_RUN_COMPLETED | negotiation_id={negotiation_id} | actor=MERCHANT_AGENT")
                 except Exception as e:
                     logger.error(f"MERCHANT_AGENT_FAILED | negotiation_id={negotiation_id} | exception_type={type(e).__name__} | exception_message={str(e)}")
+                    # Mark as expired
+                    async with AsyncSessionLocal() as exp_session:
+                        neg_to_expire = await get_negotiation(exp_session, negotiation_id)
+                        if neg_to_expire:
+                            neg_to_expire.state = NegotiationState.EXPIRED.value
+                            exp_session.add(neg_to_expire)
+                            await exp_session.commit()
                     break
                 
             if result.get("status") == "failed":
@@ -104,22 +111,80 @@ async def run_negotiation_loop(negotiation_id: uuid.UUID, intent: BuyerIntent):
                 
         elif last_sender == SenderType.MERCHANT_AGENT.value:
             next_actor = SenderType.BUYER_AGENT.value
-            logger.info(f"NEGOTIATION_TURN_STARTED | negotiation_id={negotiation_id} | turn={turn} | round={round_count} | latest_sender={last_sender} | next_actor={next_actor}")
-            logger.info(f"AGENT_RUN_STARTED | negotiation_id={negotiation_id} | actor=BUYER_AGENT")
+            
+            logger.info(
+                "\n================================================\n"
+                f"NEGOTIATION LOOP\n"
+                f"negotiation_id={negotiation_id}\n"
+                f"iteration={turn}\n"
+                "================================================\n"
+                f"LAST MESSAGE:\n"
+                f"sender={last_sender}\n"
+                f"CURRENT NEGOTIATION STATE:\n"
+                f"state={state}\n"
+                f"message_count={len(messages)}\n"
+                f"terminal=false\n"
+                f"ACTOR ROUTING:\n"
+                f"last_sender={last_sender}\n"
+                f"expected_next_actor={next_actor}\n"
+                f"CALLING BUYER RUNNER...\n"
+            )
             
             # The Buyer Agent needs the negotiation ID inside the intent
             intent.negotiation_id = negotiation_id
             
             async with AsyncSessionLocal() as session:
-                result = await run_buyer_agent(session, intent)
-                logger.info(f"AGENT_RUN_COMPLETED | negotiation_id={negotiation_id} | actor=BUYER_AGENT")
+                logger.info("BUYER RUNNER ENTERED")
+                try:
+                    result = await run_buyer_agent(session, intent)
+                    logger.info("BUYER RUNNER COMPLETED")
+                except Exception as e:
+                    logger.error(
+                        f"\nNEGOTIATION LOOP EXCEPTION\n"
+                        f"negotiation_id={negotiation_id}\n"
+                        f"iteration={turn}\n"
+                        f"actor=BUYER_AGENT\n"
+                        f"exception={str(e)}\n"
+                        f"traceback={e.__traceback__}\n",
+                        exc_info=True
+                    )
+                    # Mark as expired
+                    async with AsyncSessionLocal() as exp_session:
+                        neg_to_expire = await get_negotiation(exp_session, negotiation_id)
+                        if neg_to_expire:
+                            neg_to_expire.state = NegotiationState.EXPIRED.value
+                            exp_session.add(neg_to_expire)
+                            await exp_session.commit()
+                    break
                 
             if result.get("status") == "failed":
-                logger.error(f"Buyer agent failed: {result.get('error_reason')}")
-                # Mark as expired so the frontend doesn't hang forever
+                error_reason = result.get('error_reason', '')
+                logger.error(f"Buyer agent failed: {error_reason}")
+
+                # Distinguish infrastructure/model errors from genuine business failures.
+                # Content filter blocks, timeouts, and model unavailability are NOT
+                # the same as the buyer walking away from the deal.
+                is_infrastructure_error = error_reason in (
+                    "AGENT_MODEL_CONTENT_FILTER",
+                    "LLM_TIMEOUT",
+                    "LLM_MODEL_UNAVAILABLE",
+                )
+
+                if is_infrastructure_error:
+                    logger.error(
+                        f"NEGOTIATION_LOOP_INFRASTRUCTURE_ERROR | negotiation_id={negotiation_id} | "
+                        f"error={error_reason} | The model call failed — this is not a business rejection."
+                    )
+                else:
+                    logger.error(
+                        f"NEGOTIATION_LOOP_EXITED | negotiation_id={negotiation_id} | "
+                        f"reason=Buyer graph returned status=failed | error={error_reason}"
+                    )
+
+                # Only expire the negotiation for genuine business failures
                 async with AsyncSessionLocal() as session:
                     neg_to_expire = await get_negotiation(session, negotiation_id)
-                    if neg_to_expire:
+                    if neg_to_expire and neg_to_expire.state not in NegotiationState.TERMINAL_STATES:
                         neg_to_expire.state = NegotiationState.EXPIRED.value
                         session.add(neg_to_expire)
                         await session.commit()
@@ -132,6 +197,7 @@ async def run_negotiation_loop(negotiation_id: uuid.UUID, intent: BuyerIntent):
                 
                 if new_latest_message_id == previous_latest_message_id:
                     logger.error(f"AGENT_NO_MESSAGE_PERSISTED | negotiation_id={negotiation_id} | actor=BUYER_AGENT")
+                    logger.error("\nNEGOTIATION LOOP EXITED\nREASON:\nnew_latest_message_id == previous_latest_message_id (No new message created)\n")
                     # Mark as expired so the frontend doesn't hang forever
                     neg_to_expire = await get_negotiation(session, negotiation_id)
                     if neg_to_expire:
